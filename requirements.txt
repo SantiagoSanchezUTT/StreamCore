@@ -1,4 +1,7 @@
-requests
-kickpython
 pywebview
-python-dotenv
+requests
+dotenv
+kickpython
+aiohttp
+websockets
+curl_cffi
