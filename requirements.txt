@@ -1,3 +1,4 @@
 requests
 kickpython
 pywebview
+python-dotenv

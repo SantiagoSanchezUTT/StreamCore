@@ -892,15 +892,15 @@
 
   <div class="platform-grid">
     <div class="platform-card">
-      <img src="../img/img1.jpg" alt="Twitch" class="platform-img">
+      <img src="/img/img1.jpg" alt="Twitch" class="platform-img">
       <button class="btn access-btn" onclick="connectTwitch()">Acceder</button>
     </div>
     <div class="platform-card">
-      <img src="../img/img2.jpg" alt="YouTube" class="platform-img">
+      <img src="/img/img2.jpg" alt="YouTube" class="platform-img">
       <button class="btn access-btn">Acceder</button>
     </div>
     <div class="platform-card">
-      <img src="../img/img4.jpg" alt="Kick" class="platform-img">
+      <img src="/img/img4.jpg" alt="Kick" class="platform-img">
       <button class="btn access-btn" onclick="connectKick()">Acceder</button>
     </div>
   </div>
@@ -1290,7 +1290,7 @@
         console.log("Botón de Kick presionado. Llamando a Python...");
         try {
             // Esta es la línea mágica: llama a tu 'api.py'
-            let response = await window.pywebview.api.run_kick_setup();
+            let response = await window.pywebview.api.run_kick_auth();
             
             if (response.success) {
                 console.log("Setup de Kick iniciado. Revisa la consola y el navegador.");

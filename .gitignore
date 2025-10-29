@@ -1,0 +1,29 @@
+# Archivos de caché y compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales (si usas uno como 'venv')
+venv/
+env/
+.venv/
+.env/
+
+# Archivos de configuración y tokens sensibles ¡MUY IMPORTANTE!
+.env
+
+# Archivos de PyInstaller (para cuando empaquetes a .exe)
+build/
+dist/
+*.spec
+
+# Archivos de sistema operativo y editores comunes
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Archivos temporales
+*.swp
+*~
