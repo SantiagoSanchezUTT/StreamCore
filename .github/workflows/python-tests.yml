@@ -1,0 +1,57 @@
+# Guarda esto en: .github/workflows/python-tests.yml
+
+name: Python Tests and Reports
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest # O windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Ajusta tu versión
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-mock pytest-asyncio responses pytest-html
+
+      - name: Run tests and generate reports with logs
+        run: |
+          # Comando actualizado para incluir logs y ambos reportes
+          python -m pytest -v --log-cli-level=INFO --log-file=pytest.log --log-file-level=DEBUG --html=report.html --self-contained-html --junitxml=report.xml
+
+      - name: Publish Test Results (JUnit XML)
+        uses: actions/upload-artifact@v4
+        if: always() # Sube siempre, incluso si fallan
+        with:
+          name: junit-test-results
+          path: report.xml
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        if: always() # Sube siempre
+        with:
+          name: pytest-html-report
+          path: report.html
+
+      # --- NUEVO: Subir archivo de logs detallados ---
+      - name: Upload Detailed Logs
+        uses: actions/upload-artifact@v4
+        if: always() # Sube siempre
+        with:
+          name: pytest-logs
+          path: pytest.log # Sube el archivo de log generado
+      # -----------------------------------------------
