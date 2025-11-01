@@ -56,7 +56,12 @@ class Api:
         # Devuelve inmediatamente a la UI
         return {"success": True, "message": "Proceso de autenticación de Kick iniciado en segundo plano."}
 
-#    def run_twitch_auth(self):
+    async def run_twitch_auth_async(self):
+        """Función async interna para Twitch auth."""
+        print("(API) Iniciando llamada async a initiate_twitch_auth...")
+        return await auth_service.initiate_twitch_auth()
+
+    def run_twitch_auth(self):
         """
         Inicia el flujo de autenticación de Twitch en un hilo separado.
         (Llamada desde la UI)
@@ -66,18 +71,21 @@ class Api:
         def auth_thread_func():
             print("(API) Hilo de autenticación Twitch iniciado.")
             try:
-                success = auth_service.initiate_twitch_auth()
+                # Twitch (como Kick) ahora usa un loop de asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                success = loop.run_until_complete(self.run_twitch_auth_async())
+                loop.close()
                 print(f"(API) Resultado auth Twitch (hilo finalizado): {success}")
+                # auth_service publica el evento 'auth:twitch_completed'
             except Exception as e:
                 print(f"(API) Error en hilo auth Twitch: {e}")
-                # Publica el error en el bus principal si falla el hilo
                 bus.publish("auth:twitch_completed", {"success": False, "error": str(e)})
 
         thread = threading.Thread(target=auth_thread_func, daemon=True)
         thread.start()
-        # Devuelve inmediatamente a la UI
         return {"success": True, "message": "Proceso de autenticación de Twitch iniciado en segundo plano."}
-#
+    
     def run_logout(self, platform):
         """
         Llama al servicio para desvincular una cuenta (borrar tokens).

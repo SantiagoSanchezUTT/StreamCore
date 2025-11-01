@@ -20,19 +20,19 @@ PORT = 17563
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(dotenv_path=dotenv_path)
 
-# --- Configuración (Claves Hardcoded) ---
+# --- Configuración ---
 # Kick
 KICK_CLIENT_ID = os.getenv("KICK_CLIENT_ID")
 KICK_CLIENT_SECRET = os.getenv("KICK_CLIENT_SECRET")
 KICK_SCOPES = ["user:read", "channel:read", "chat:write", "events:subscribe"]
 KICK_DB_PATH = get_persistent_data_path("kick_tokens.db")
 
-# Twitch
-# TWITCH_CLIENT_ID = "abcdu" # <-- Hardcoded
-# TWITCH_CLIENT_SECRET = "abcd" # <-- Hardcoded (Asegúrate que sea el correcto)
-# TWITCH_SCOPES = ["user:read:email", "chat:read", "chat:edit"]
-# TWITCH_AUTH_URL = "https://id.twitch.tv/oauth2/authorize"
-# TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
+# Twitch (leído desde .env)
+TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
+TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET")
+TWITCH_SCOPES = os.getenv("TWITCH_SCOPES", "user:read:email chat:read chat:edit").split(" ")
+TWITCH_AUTH_URL = "https://id.twitch.tv/oauth2/authorize"
+TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 
 # --- Servidor HTTP (Idéntico a antes) ---
 code_received_event = threading.Event()
@@ -83,7 +83,7 @@ def start_http_server():
     print("🛑 (Auth Service) Servidor temporal detenido.")
 # ------------------------------------
 
-# --- Lógica de Autenticación KICK (Sin cambios funcionales, usa constantes hardcoded) ---
+# --- Lógica de Autenticación KICK ---
 async def initiate_kick_auth() -> bool:
     # (El código interno es idéntico a antes, simplemente usará las constantes KICK_CLIENT_ID/SECRET definidas arriba)
     if not KICK_CLIENT_ID or not KICK_CLIENT_SECRET: print("❌ Kick ID/Secret missing"); return False
@@ -114,6 +114,94 @@ async def initiate_kick_auth() -> bool:
     elif 'code' in code_container: print(f"❌ Código recibido, plataforma incorrecta: {code_container.get('platform')}")
     else: print("❌ No se recibió código Kick."); await api.close()
     bus.publish("auth:kick_completed", {"success": success}); return success
+
+# --- Lógica de Autenticación TWITCH ---
+async def initiate_twitch_auth() -> bool:
+    if not TWITCH_CLIENT_ID or not TWITCH_CLIENT_SECRET:
+        print("❌ Twitch ID/Secret missing"); return False
+    
+    if token_manager.check_tokens_exist("twitch"):
+        print("ℹ️ (Auth Service) Twitch ya configurado."); 
+        bus.publish("auth:twitch_completed", {"success": True, "already_configured": True}); 
+        return True
+
+    # Inicia el servidor HTTP en un hilo (reutiliza el de Kick)
+    server_thread = threading.Thread(target=start_http_server, daemon=True); server_thread.start()
+    
+    twitch_redirect_uri = REDIRECT_URI + '/twitch' # La ruta que el handler espera
+    
+    # 1. Abrir navegador
+    params = {
+        "client_id": TWITCH_CLIENT_ID,
+        "redirect_uri": twitch_redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(TWITCH_SCOPES)
+    }
+    url = f"{TWITCH_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    print("🌐 (Auth Service) Abriendo navegador Twitch..."); webbrowser.open(url)
+    print("⏳ (Auth Service) Esperando Twitch...")
+
+    # 2. Esperar el código (usa el mismo evento que Kick)
+    loop = asyncio.get_running_loop(); 
+    await loop.run_in_executor(None, code_received_event.wait)
+
+    success = False
+    if 'code' in code_container and code_container.get('platform') == 'twitch':
+        code = code_container['code']; print("🔑 Código Twitch recibido...")
+        
+        # 3. Intercambiar código por token
+        try:
+            print("🔃 Intercambiando código Twitch...");
+            token_data = {
+                "client_id": TWITCH_CLIENT_ID,
+                "client_secret": TWITCH_CLIENT_SECRET,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": twitch_redirect_uri
+            }
+            
+            # Usamos run_in_executor para la llamada de requests
+            response = await loop.run_in_executor(
+                None, lambda: requests.post(TWITCH_TOKEN_URL, data=token_data)
+            )
+            response.raise_for_status() # Lanza error si falla
+            tokens = response.json()
+            access_token = tokens['access_token']
+            print("✅ Token Twitch obtenido.")
+
+            # 4. Obtener info del usuario
+            print("🔎 Buscando info usuario Twitch...");
+            headers = {"Authorization": f"Bearer {access_token}", "Client-Id": TWITCH_CLIENT_ID}
+            response = await loop.run_in_executor(
+                None, lambda: requests.get("https://api.twitch.tv/helix/users", headers=headers)
+            )
+            response.raise_for_status()
+            user_data = response.json()["data"][0]
+            
+            # 5. Guardar tokens y config
+            full_token_data = {
+                "access_token": access_token,
+                "refresh_token": tokens.get("refresh_token"),
+                "expires_in": tokens.get("expires_in"),
+                "username": user_data["login"],
+                "channel": user_data["login"], # Asumimos que el canal es el mismo
+                "user_id": user_data["id"]
+            }
+            token_manager.save_twitch_tokens(full_token_data)
+            success = True
+            
+        except Exception as e:
+            print(f"❌ Error auth Twitch: {e}"); 
+            token_manager.delete_twitch_tokens()
+        finally:
+            code_container.clear(); 
+            code_received_event.clear()
+            
+    elif 'code' in code_container: print(f"❌ Código recibido, plataforma incorrecta: {code_container.get('platform')}")
+    else: print("❌ No se recibió código Twitch.")
+
+    bus.publish("auth:twitch_completed", {"success": success}); 
+    return success
 
 # --- Logout/Estado (Sin cambios) ---
 def logout(platform: str) -> bool:

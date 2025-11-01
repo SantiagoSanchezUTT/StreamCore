@@ -892,12 +892,12 @@
 
   <div class="platform-grid">
     <div class="platform-card">
-      <img src="/img/img1.jpg" alt="Twitch" class="platform-img">
-      <button class="btn access-btn" onclick="connectTwitch()">Acceder</button>
+      <img src="/img/img1.jpg" alt="YouTube" class="platform-img">
+      <button class="btn access-btn">Acceder</button>
     </div>
     <div class="platform-card">
-      <img src="/img/img2.jpg" alt="YouTube" class="platform-img">
-      <button class="btn access-btn">Acceder</button>
+      <img src="/img/img2.jpg" alt="Twitch" class="platform-img">
+      <button class="btn access-btn" onclick="connectTwitch()">Acceder</button>
     </div>
     <div class="platform-card">
       <img src="/img/img4.jpg" alt="Kick" class="platform-img">
@@ -907,14 +907,13 @@
 </div>
 
 <style>
-/* ✨ ESTILOS BASE ✨ */
 .platform-grid {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
   gap: 30px !important;
   justify-items: center;
   align-items: center;
-  max-width: 650px; /* más ancho para 3 columnas */
+  max-width: 650px;
   margin: 0 auto;
 }
 
@@ -1307,22 +1306,23 @@
     }
 
     async function connectTwitch() {
-        console.log("Botón de Twitch presionado. Llamando a Python...");
-        try {
-            // El script 'twitch.py' es inteligente y se logueará
-            // o usará tokens guardados automáticamente.
-            let response = await window.pywebview.api.start_twitch_bot();
-            
-            if (response.success) {
-                console.log("Bot de Twitch iniciado.");
-            } else {
-                console.error("Error al iniciar bot de Twitch:", response.message);
-                alert("Error: " + response.message);
-            }
-        } catch (e) {
-            console.error("Error fatal al llamar a pywebview:", e);
-            alert("Error fatal: " + e);
+    console.log("Botón de Twitch presionado. Llamando a Python...");
+    try {
+        // CAMBIO: Llama a .api.run_twitch_auth()
+        let response = await window.pywebview.api.run_twitch_auth(); 
+        
+        // Esta lógica es correcta, 'response' recibirá el JSON
+        // {"success": True, "message": "Proceso de autenticación..."}
+        if (response.success) {
+            console.log("Proceso de autenticación de Twitch iniciado.");
+        } else {
+            console.error("Error al iniciar autenticación de Twitch:", response.message);
+            alert("Error: " + response.message);
         }
+    } catch (e) {
+        console.error("Error fatal al llamar a pywebview:", e);
+        alert("Error fatal: " + e);
     }
+}
 </script>
  </html>

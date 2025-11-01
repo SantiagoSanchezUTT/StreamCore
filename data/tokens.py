@@ -56,6 +56,40 @@ def delete_kick_files():
         print(f"(Token Manager) Error eliminando archivos Kick: {e}")
         return False
 
+# --- TWITCH ---
+def save_twitch_tokens(token_data):
+    """Guarda los tokens de Twitch en un archivo JSON."""
+    try:
+        with open(TWITCH_TOKEN_FILE, "w", encoding="utf-8") as f:
+            json.dump(token_data, f, indent=4)
+        print(f"(Token Manager) Tokens de Twitch guardados en '{TWITCH_TOKEN_FILE}'")
+    except Exception as e:
+        print(f"(Token Manager) Error guardando tokens Twitch: {e}")
+
+def load_twitch_tokens():
+    """Carga los tokens de Twitch desde un archivo JSON."""
+    if not os.path.exists(TWITCH_TOKEN_FILE):
+        return None
+    try:
+        with open(TWITCH_TOKEN_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"(Token Manager) Error cargando tokens Twitch: {e}")
+        return None
+
+def delete_twitch_tokens():
+    """Elimina el archivo de tokens de Twitch."""
+    deleted = False
+    try:
+        if os.path.exists(TWITCH_TOKEN_FILE):
+            os.remove(TWITCH_TOKEN_FILE)
+            deleted = True
+            print("(Token Manager) Archivo de tokens de Twitch eliminado.")
+        return deleted
+    except Exception as e:
+        print(f"(Token Manager) Error eliminando archivo Twitch: {e}")
+        return False
+
 # --- GENERAL ---
 def check_tokens_exist(platform: str) -> bool:
     if platform == "kick":
@@ -69,6 +103,5 @@ def logout(platform: str) -> bool:
      if platform == "kick":
          return delete_kick_files()
      elif platform == "twitch":
-         print(f"(Token Manager) Eliminando tokens Twitch...")
-         # return delete_twitch_tokens()
+         return delete_twitch_tokens()
      return False

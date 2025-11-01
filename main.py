@@ -1,4 +1,3 @@
-# Guarda esto en: main.py
 import webview
 import os
 import pathlib
@@ -9,6 +8,7 @@ from event_bus import bus
 from connectors import kick_connector
 from processing import chat_processor, sender_processor
 from services import auth_service
+from connectors import twitch_connector
 # --------------------------------
 
 # --- Define rutas ---
@@ -22,11 +22,24 @@ async def start_connectors_async():
     """Intenta inicializar los conectores si están autenticados."""
     print("Iniciando conectores en segundo plano...")
     tasks = []
+    
+    # Lógica de Kick (sin cambios)
     if auth_service.check_auth_status("kick"):
         print("   - Intentando iniciar Kick...")
         tasks.append(asyncio.create_task(kick_connector.initialize()))
     else:
         print("   - Kick no configurado, omitiendo inicio.")
+
+    # --- AÑADIR LÓGICA DE TWITCH ---
+    if auth_service.check_auth_status("twitch"):
+        print("   - Intentando iniciar Twitch...")
+        # initialize() de Twitch NO es async, lo llamamos en un hilo de executor
+        loop = asyncio.get_running_loop()
+        # run_in_executor envuelve la llamada síncrona en una tarea async
+        tasks.append(loop.run_in_executor(None, twitch_connector.initialize))
+    else:
+        print("   - Twitch no configurado, omitiendo inicio.")
+    # --- FIN DEL CAMBIO ---
 
     if tasks:
         await asyncio.gather(*tasks)
@@ -62,16 +75,12 @@ if __name__ == '__main__':
         height=720
     )
 
-
     print("   - Creando hilo para iniciar conectores...")
     connector_thread = threading.Thread(target=run_async_connectors_in_thread, daemon=True)
     connector_thread.start()
-
+    
     print("Iniciando interfaz gráfica...")
-    webview.start(debug=True) # debug=True muestra errores de JS en consola
-
-    # --- Limpieza al cerrar la ventana ---
-    print("\nAplicación cerrada. Deteniendo componentes...")
+    webview.start(debug=True)
 
     shutdown_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(shutdown_loop)
@@ -80,6 +89,15 @@ if __name__ == '__main__':
         shutdown_loop.run_until_complete(kick_connector.shutdown())
     except Exception as e: print(f"   - Error deteniendo Kick: {e}")
 
+    # --- AÑADIR LÓGICA DE TWITCH ---
+    try:
+        print("   - Solicitando detención de Twitch...")
+        # shutdown() de Twitch NO es async, se llama directamente
+        twitch_connector.shutdown()
+    except Exception as e: print(f"   - Error deteniendo Twitch: {e}")
+    # --- FIN DEL CAMBIO ---
+
+    print("\nAplicación cerrada. Deteniendo componentes...")
     # Cierra el bucle de limpieza
     shutdown_loop.close()
 

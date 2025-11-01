@@ -1,29 +1,36 @@
-# Archivos de caché y compilados de Python
-__pycache__/
+# Archivos compilados de Python
+pycache/
 *.pyc
 *.pyo
 *.pyd
+*.spec
 
-# Entornos virtuales (si usas uno como 'venv')
+# Entornos Virtuales
 venv/
 env/
 .venv/
-.env/
 
-# Archivos de configuración y tokens sensibles ¡MUY IMPORTANTE!
+# Archivos de configuración sensible
 .env
 
-# Archivos de PyInstaller (para cuando empaquetes a .exe)
-build/
-dist/
-*.spec
+# Archivos de credenciales y tokens de google
+client_secret.json
+youtube_token.pickle
 
-# Archivos de sistema operativo y editores comunes
+# Configuraciones y Datos de la Aplicación
+*.db
+*.db-journal
+*.pickle
+twitch_tokens.json
+kick_config.json
+
+# Logs y Archivos Temporales
+.pytest_cache/
+report.html
+report.xml
+
+# Archivos del sistema
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-
-# Archivos temporales
-*.swp
-*~

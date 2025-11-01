@@ -43,9 +43,11 @@ async def handle_reply_event(data: dict):
 
     if platform == "kick":
         await send_kick_message(response)
+    
     elif platform == "twitch":
-        print("(Sender Processor) Envío Twitch no implementado.")
-        #await send_twitch_message(response)
+        print("(Sender Processor) Ignorando Twitch (manejado por conector).")
+        return
+        
     else:
         print(f"(Sender Processor) Plataforma desconocida para enviar: {platform}")
 
