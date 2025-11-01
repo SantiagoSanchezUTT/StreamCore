@@ -5,3 +5,5 @@ kickpython
 aiohttp
 websockets
 curl_cffi
+event_bus
+dotenv
