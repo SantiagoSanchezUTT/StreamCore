@@ -103,6 +103,10 @@ async def run_kick_bot():
         print("🛑 No se pudo autenticar Kick.")
         return
 
+    # --- Mostrar panel administrativo automático ---
+    print("\n💡 Cargando panel de gestión automáticamente...\n")
+    menu_kick.main_menu()
+
     # --- Mantener el bot activo ---
     print("\nBot de Kick corriendo. Presiona Ctrl+C para salir.")
     print("💡 Escribe 'menu' para abrir el panel de gestión.\n")
