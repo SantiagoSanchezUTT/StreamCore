@@ -115,7 +115,7 @@ async def run_kick_bot():
 
             elif msg_input.lower() == "menu":
                 # 🧩 Abre el panel administrativo
-                menu_manager.main_menu()
+                menu_kick.main_menu()
 
             elif msg_input.lower() == "top":
                 users = get_top_users()
