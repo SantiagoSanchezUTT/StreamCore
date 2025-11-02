@@ -109,7 +109,8 @@ async def run_kick_bot():
 
     # --- Mantener el bot activo ---
     print("\nBot de Kick corriendo. Presiona Ctrl+C para salir.")
-    print("💡 Escribe 'menu' para abrir el panel de gestión.\n")
+    print("💡 Puedes volver al menú escribiendo 'menu' en cualquier momento.\n")
+
     try:
         while True:
             msg_input = await asyncio.to_thread(input, "> ")
@@ -146,7 +147,6 @@ async def run_kick_bot():
         print("🧹 Limpiando conector de Kick...")
         await kick_connector.shutdown()
         print("👋 ¡Adiós!")
-
 
 # ==========================================================
 # EJECUCIÓN PRINCIPAL
