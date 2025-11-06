@@ -1,24 +1,59 @@
-# Guarda esto en: api.py
+# En: src/api.py
 import asyncio
 import threading
 import os
-# Importa los módulos necesarios
+# --- IMPORTACIONES MODIFICADAS ---
 from services import auth_service
-from data import tokens as token_manager # Puede ser útil para alguna verificación extra
-# from data.utils import get_persistent_data_path # Ya no es necesario aquí directamente
-from event_bus import bus # Para publicar eventos si es necesario
+from data import tokens as token_manager # Importamos el token_manager
+from event_bus import bus
 
 class Api:
     def __init__(self):
         print("(API) Instancia creada.")
         pass
 
-    # --- Funciones de Estado y Autenticación ---
+    # --- ¡NUEVA FUNCIÓN! ---
+    def get_all_auth_status(self):
+        """
+        Revisa el estado de TODAS las plataformas y devuelve los datos
+        del perfil si están conectadas.
+        Llamada por el JS al cargar la página.
+        """
+        print("(API) Solicitando estado de autenticación de todas las plataformas...")
+        status = {
+            "twitch": {"status": "disconnected"},
+            "kick": {"status": "disconnected"}
+        }
+
+        # 1. Revisar Twitch
+        if token_manager.check_tokens_exist("twitch"):
+            data = token_manager.load_twitch_tokens()
+            if data:
+                status["twitch"] = {
+                    "status": "connected",
+                    "username": data.get("username", "Usuario Twitch"),
+                    "profile_pic": data.get("profile_image_url", "")
+                }
+        
+        # 2. Revisar Kick
+        if token_manager.check_tokens_exist("kick"):
+            data = token_manager.load_kick_config()
+            if data:
+                status["kick"] = {
+                    "status": "connected",
+                    "username": data.get("CHANNEL_NAME", "Usuario Kick"),
+                    "profile_pic": data.get("profile_image_url", "")
+                }
+        
+        print(f"(API) Estado de autenticación: {status}")
+        return status
+
+    # --- Funciones de Estado y Autenticación (Sin cambios, pero con imports corregidos) ---
 
     def check_auth_status(self, platform):
         """
         Revisa si una plataforma ya tiene tokens guardados.
-        Llama directamente a la función del auth_service.
+        (Esta función ya no es necesaria para la UI principal, pero la dejamos)
         """
         is_connected = auth_service.check_auth_status(platform)
         status = "connected" if is_connected else "disconnected"
@@ -45,15 +80,14 @@ class Api:
                 success = loop.run_until_complete(self.run_kick_auth_async())
                 loop.close()
                 print(f"(API) Resultado auth Kick (hilo finalizado): {success}")
-                # auth_service ya publica el evento 'auth:kick_completed' en el bus principal
+                # Publicamos en el bus para que el frontend (JS) pueda escuchar
+                bus.publish("auth:kick_completed", {"success": success})
             except Exception as e:
                 print(f"(API) Error en hilo auth Kick: {e}")
-                # Publica el error en el bus principal si falla el hilo
                 bus.publish("auth:kick_completed", {"success": False, "error": str(e)})
 
         thread = threading.Thread(target=auth_thread_func, daemon=True)
         thread.start()
-        # Devuelve inmediatamente a la UI
         return {"success": True, "message": "Proceso de autenticación de Kick iniciado en segundo plano."}
 
     async def run_twitch_auth_async(self):
@@ -71,13 +105,13 @@ class Api:
         def auth_thread_func():
             print("(API) Hilo de autenticación Twitch iniciado.")
             try:
-                # Twitch (como Kick) ahora usa un loop de asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 success = loop.run_until_complete(self.run_twitch_auth_async())
                 loop.close()
                 print(f"(API) Resultado auth Twitch (hilo finalizado): {success}")
-                # auth_service publica el evento 'auth:twitch_completed'
+                # Publicamos en el bus para que el frontend (JS) pueda escuchar
+                bus.publish("auth:twitch_completed", {"success": success})
             except Exception as e:
                 print(f"(API) Error en hilo auth Twitch: {e}")
                 bus.publish("auth:twitch_completed", {"success": False, "error": str(e)})
@@ -92,6 +126,9 @@ class Api:
         (Llamada desde la UI)
         """
         print(f"(API) Solicitando desvinculación de {platform}...")
-        # auth_service.logout publica el evento 'auth:{platform}_logout'
         success = auth_service.logout(platform)
+        
+        # Publicamos el evento para que el JS actualice la UI
+        bus.publish(f"auth:{platform}_logout", {"success": success})
+        
         return {"success": success, "message": f"Desvinculación de {platform} {'exitosa' if success else 'fallida'}."}
