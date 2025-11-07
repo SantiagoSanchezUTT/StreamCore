@@ -1,0 +1,1355 @@
+<!doctype html>
+<html lang="es">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamCore Dashboard - TTS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+        
+        body {
+            box-sizing: border-box;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0E0E10;
+            color: #FFFFFF;
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 100vh;
+            min-height: 100%;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #0E0E10 0%, #1A1A1D 100%);
+            border-right: 1px solid #222222;
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #FF0000, #9146FF, #25F4EE, #53FC18);
+            opacity: 0.6;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid #222222;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #53FC18, #25F4EE);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #000;
+            font-size: 16px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #FFFFFF, #A9A9A9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-menu {
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #222222;
+            transform: translateX(4px);
+        }
+
+        .nav-item.active {
+            background: rgba(145, 70, 255, 0.1);
+            border-color: #9146FF;
+            box-shadow: 0 0 20px rgba(145, 70, 255, 0.2);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #9146FF;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            opacity: 0.8;
+        }
+
+        .nav-text {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .connection-status {
+            padding: 16px;
+            background: rgba(83, 252, 24, 0.1);
+            border: 1px solid rgba(83, 252, 24, 0.3);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: auto;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #53FC18;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #0E0E10 0%, #1A1A1D 100%);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #222222;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFFFFF, #A9A9A9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .platform-selector {
+            display: flex;
+            gap: 12px;
+        }
+
+        .platform-btn {
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 1px solid #222222;
+            background: rgba(255, 255, 255, 0.02);
+            color: #A9A9A9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .platform-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .platform-btn.youtube {
+            border-color: #FF0000;
+            color: #FF0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.1);
+        }
+
+        .platform-btn.twitch {
+            border-color: #9146FF;
+            color: #9146FF;
+            box-shadow: 0 0 20px rgba(145, 70, 255, 0.1);
+        }
+
+        .platform-btn.tiktok {
+            border-color: #25F4EE;
+            color: #25F4EE;
+            box-shadow: 0 0 20px rgba(37, 244, 238, 0.1);
+        }
+
+        .platform-btn.kick {
+            border-color: #53FC18;
+            color: #53FC18;
+            box-shadow: 0 0 20px rgba(83, 252, 24, 0.1);
+        }
+
+        /* TTS Layout */
+        .tts-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 32px;
+            height: calc(100vh - 200px);
+        }
+
+        .tts-main {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .tts-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* TTS Controls */
+        .tts-controls {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .controls-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .tts-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(83, 252, 24, 0.1);
+            border: 1px solid rgba(83, 252, 24, 0.3);
+            border-radius: 20px;
+            font-size: 12px;
+            color: #53FC18;
+        }
+
+        .tts-status.paused {
+            background: rgba(255, 196, 0, 0.1);
+            border-color: rgba(255, 196, 0, 0.3);
+            color: #FFC400;
+        }
+
+        .tts-status.disabled {
+            background: rgba(255, 68, 68, 0.1);
+            border-color: rgba(255, 68, 68, 0.3);
+            color: #FF4444;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 500;
+            color: #FFFFFF;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .control-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 12px;
+            color: #FFFFFF;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #9146FF;
+            box-shadow: 0 0 20px rgba(145, 70, 255, 0.2);
+        }
+
+        .control-select {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 12px;
+            color: #FFFFFF;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-select:focus {
+            outline: none;
+            border-color: #9146FF;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            background: #222222;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #9146FF;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(145, 70, 255, 0.3);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #9146FF;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(145, 70, 255, 0.3);
+        }
+
+        .slider-value {
+            min-width: 40px;
+            text-align: center;
+            font-weight: 500;
+            color: #9146FF;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid #222222;
+            background: rgba(255, 255, 255, 0.02);
+            color: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .btn.primary {
+            background: #9146FF;
+            border-color: #9146FF;
+            color: #FFFFFF;
+        }
+
+        .btn.primary:hover {
+            background: #7c3aed;
+            box-shadow: 0 4px 15px rgba(145, 70, 255, 0.3);
+        }
+
+        .btn.success {
+            background: #53FC18;
+            border-color: #53FC18;
+            color: #000000;
+        }
+
+        .btn.success:hover {
+            background: #45d615;
+            box-shadow: 0 4px 15px rgba(83, 252, 24, 0.3);
+        }
+
+        .btn.warning {
+            background: #FFC400;
+            border-color: #FFC400;
+            color: #000000;
+        }
+
+        .btn.warning:hover {
+            background: #e6b000;
+            box-shadow: 0 4px 15px rgba(255, 196, 0, 0.3);
+        }
+
+        .btn.danger {
+            background: #FF4444;
+            border-color: #FF4444;
+            color: #FFFFFF;
+        }
+
+        .btn.danger:hover {
+            background: #cc3333;
+            box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+        }
+
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        /* TTS Queue */
+        .tts-queue {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 16px;
+            padding: 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .queue-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FFFFFF;
+        }
+
+        .queue-count {
+            padding: 4px 12px;
+            background: rgba(145, 70, 255, 0.2);
+            border: 1px solid rgba(145, 70, 255, 0.3);
+            border-radius: 20px;
+            font-size: 12px;
+            color: #9146FF;
+            font-weight: 500;
+        }
+
+        .queue-list {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .queue-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .queue-item:hover {
+            border-color: #9146FF;
+            transform: translateX(4px);
+        }
+
+        .queue-item.playing {
+            border-color: #53FC18;
+            background: rgba(83, 252, 24, 0.05);
+        }
+
+        .queue-item.playing::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #53FC18;
+            border-radius: 0 3px 3px 0;
+        }
+
+        .queue-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .queue-item-user {
+            font-weight: 600;
+            color: #9146FF;
+            font-size: 14px;
+        }
+
+        .queue-item-amount {
+            background: rgba(83, 252, 24, 0.2);
+            border: 1px solid rgba(83, 252, 24, 0.3);
+            border-radius: 16px;
+            padding: 2px 8px;
+            font-size: 11px;
+            color: #53FC18;
+            font-weight: 600;
+        }
+
+        .queue-item-message {
+            color: #A9A9A9;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .queue-item-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .queue-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid #222222;
+            background: rgba(255, 255, 255, 0.02);
+            color: #A9A9A9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .queue-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFFFFF;
+        }
+
+        .queue-btn.play {
+            color: #53FC18;
+            border-color: rgba(83, 252, 24, 0.3);
+        }
+
+        .queue-btn.skip {
+            color: #FFC400;
+            border-color: rgba(255, 196, 0, 0.3);
+        }
+
+        .queue-btn.remove {
+            color: #FF4444;
+            border-color: rgba(255, 68, 68, 0.3);
+        }
+
+        /* TTS Settings */
+        .tts-settings {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .settings-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-label {
+            display: block;
+            font-weight: 500;
+            color: #FFFFFF;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkbox-custom {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #222222;
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+            background: #9146FF;
+            border-color: #9146FF;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* TTS Stats */
+        .tts-stats {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .stats-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #222222;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #A9A9A9;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #FFFFFF;
+            font-size: 14px;
+        }
+
+        /* Test TTS */
+        .test-tts {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+        }
+
+        .test-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid #222222;
+            border-radius: 12px;
+            color: #FFFFFF;
+            font-size: 14px;
+            margin-bottom: 16px;
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .test-input:focus {
+            outline: none;
+            border-color: #9146FF;
+            box-shadow: 0 0 20px rgba(145, 70, 255, 0.2);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .tts-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            
+            .tts-sidebar {
+                order: -1;
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            
+            .tts-sidebar > * {
+                min-width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                padding: 16px;
+            }
+            
+            .nav-menu {
+                display: flex;
+                overflow-x: auto;
+                gap: 8px;
+            }
+            
+            .nav-item {
+                min-width: 120px;
+                margin-bottom: 0;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .tts-layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .tts-sidebar {
+                flex-direction: column;
+            }
+            
+            .tts-sidebar > * {
+                min-width: auto;
+            }
+            
+            .control-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animation for speaking */
+        @keyframes speaking {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .speaking {
+            animation: speaking 1s ease-in-out infinite;
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <script src="js/streamcore_state.js"></script>
+ <body>
+  <div class="dashboard-container"><!-- Sidebar -->
+   <div class="sidebar">
+    <div class="logo">
+     <div class="logo-icon">
+      SC
+     </div>
+     <div class="logo-text">
+      StreamCore
+     </div>
+    </div>
+    <nav class="nav">
+    <div class="nav-item" onclick="window.location.href='boceto_interfaz.html'">
+        <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+        </svg>
+        <span class="nav-text">Dashboard</span>
+    </div>
+
+    <div class="nav-item" onclick="window.location.href='boceto_ui_commands.html'">
+        <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+        </svg>
+        <span class="nav-text">Comandos</span>
+    </div>
+
+    <div class="nav-item" onclick="window.location.href='boceto_ui_tts.html'">
+        <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" />
+        </svg>
+        <span class="nav-text">TTS</span>
+    </div>
+
+    <div class="nav-item" onclick="window.location.href='boceto_ui_config.html'">
+        <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" />
+        </svg>
+        <span class="nav-text">Configuración</span>
+    </div>
+    </nav>
+    <div class="connection-status">
+     <div class="status-dot"></div><span style="font-size: 14px; font-weight: 500;">Conectado a Twitch</span>
+    </div>
+   </div><!-- Main Content -->
+   <div class="main-content">
+    <div class="header">
+     <h1 class="header-title">Text-to-Speech (TTS)</h1>
+     <div class="platform-selector">
+      <div class="platform-btn youtube">
+       🎬 YouTube
+      </div>
+      <div class="platform-btn twitch">
+       🎮 Twitch
+      </div>
+      <div class="platform-btn kick">
+       🟦 Kick
+      </div>
+     </div>
+    </div>
+    <div class="tts-layout"><!-- Main TTS Area -->
+     <div class="tts-main"><!-- TTS Controls -->
+      <div class="tts-controls">
+       <div class="controls-header">
+        <h3 class="controls-title">Control de TTS</h3>
+        <div class="tts-status" id="ttsStatus">
+         <div class="status-dot"></div> Activo
+        </div>
+       </div>
+       <div class="control-group"><label class="control-label">Voz</label> <select class="control-select" id="voiceSelect"> <option value="es-ES-Standard-A">Español (España) - Mujer</option> <option value="es-ES-Standard-B">Español (España) - Hombre</option> <option value="es-MX-Standard-A">Español (México) - Mujer</option> <option value="es-MX-Standard-B">Español (México) - Hombre</option> <option value="es-AR-Standard-A">Español (Argentina) - Mujer</option> <option value="en-US-Standard-A">English (US) - Mujer</option> <option value="en-US-Standard-B">English (US) - Hombre</option> </select>
+       </div>
+       <div class="control-group"><label class="control-label">Velocidad</label>
+        <div class="slider-container"><input type="range" class="slider" id="speedSlider" min="0.5" max="2" step="0.1" value="1"> <span class="slider-value" id="speedValue">1.0x</span>
+        </div>
+       </div>
+       <div class="control-group"><label class="control-label">Tono</label>
+        <div class="slider-container"><input type="range" class="slider" id="pitchSlider" min="0.5" max="2" step="0.1" value="1"> <span class="slider-value" id="pitchValue">1.0</span>
+        </div>
+       </div>
+       <div class="control-group"><label class="control-label">Volumen</label>
+        <div class="slider-container"><input type="range" class="slider" id="volumeSlider" min="0" max="100" step="5" value="80"> <span class="slider-value" id="volumeValue">80%</span>
+        </div>
+       </div>
+       <div class="control-buttons"><button class="btn success" id="enableTtsBtn" onclick="toggleTTS()">
+         <svg width="16" height="16" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+         </svg> Activar TTS </button> <button class="btn danger" onclick="clearQueue()">
+         <svg width="16" height="16" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /> <path fill-rule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 112 0v4a1 1 0 11-2 0V9zm4 0a1 1 0 112 0v4a1 1 0 11-2 0V9z" />
+         </svg> Limpiar Cola </button>
+       </div>
+      </div><!-- TTS Queue -->
+      <div class="tts-queue">
+       <div class="queue-header">
+        <h3 class="queue-title">Cola de TTS</h3>
+        <div class="queue-count" id="queueCount">
+         3 mensajes
+        </div>
+       </div>
+       <div class="queue-list" id="queueList"><!-- Queue items will be populated by JavaScript -->
+       </div>
+      </div>
+     </div><!-- TTS Sidebar -->
+     <div class="tts-sidebar"><!-- TTS Settings -->
+      <div class="tts-settings">
+       <h3 class="settings-title">Configuración</h3>
+       <div class="setting-group"><label class="setting-label">Donación Mínima</label>
+        <div class="control-row"><input type="number" class="control-input" value="1" min="0" step="0.5" id="minDonation"> <select class="control-select" id="currency"> <option value="USD">USD</option> <option value="EUR">EUR</option> <option value="MXN">MXN</option> <option value="ARS">ARS</option> </select>
+        </div>
+       </div>
+       <div class="setting-group"><label class="setting-label">Límite de Caracteres</label> <input type="number" class="control-input" value="200" min="50" max="500" id="charLimit">
+       </div>
+       <div class="setting-group"><label class="checkbox-label"> <input type="checkbox" id="enableProfanityFilter" checked> <span class="checkbox-custom"></span> Filtro de palabras prohibidas </label> <label class="checkbox-label"> <input type="checkbox" id="enableEmoteReading"> <span class="checkbox-custom"></span> Leer nombres de emotes </label> <label class="checkbox-label"> <input type="checkbox" id="enableUrlFilter" checked> <span class="checkbox-custom"></span> Filtrar URLs </label> <label class="checkbox-label"> <input type="checkbox" id="enableSubsOnly"> <span class="checkbox-custom"></span> Solo suscriptores </label>
+       </div>
+      </div><!-- TTS Stats -->
+      <div class="tts-stats">
+       <h3 class="stats-title">Estadísticas</h3>
+       <div class="stat-item"><span class="stat-label">Mensajes hoy</span> <span class="stat-value">47</span>
+       </div>
+       <div class="stat-item"><span class="stat-label">Total recaudado</span> <span class="stat-value">$234.50</span>
+       </div>
+       <div class="stat-item"><span class="stat-label">Promedio por mensaje</span> <span class="stat-value">$4.99</span>
+       </div>
+       <div class="stat-item"><span class="stat-label">Tiempo total</span> <span class="stat-value">12m 34s</span>
+       </div>
+       <div class="stat-item"><span class="stat-label">En cola</span> <span class="stat-value">3</span>
+       </div>
+      </div><!-- Test TTS -->
+      <div class="test-tts">
+       <h3 class="test-title">Probar TTS</h3><textarea class="test-input" id="testMessage" placeholder="Escribe un mensaje para probar la voz...">¡Hola! Este es un mensaje de prueba para el sistema de Text-to-Speech.</textarea> <button class="btn primary" onclick="testTTS()" style="width: 100%;">
+        <svg width="16" height="16" fill="currentColor" viewbox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+        </svg> Reproducir Prueba </button>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <script>
+        // Sample TTS queue data
+        const sampleQueue = [
+            {
+                id: 1,
+                user: 'StreamFan123',
+                amount: 5.00,
+                currency: 'USD',
+                message: '¡Hola streamer! Gracias por el contenido increíble. Sigue así, eres el mejor.',
+                timestamp: new Date(Date.now() - 30000),
+                status: 'playing'
+            },
+            {
+                id: 2,
+                user: 'GamerPro456',
+                amount: 10.00,
+                currency: 'USD',
+                message: 'Me encanta tu stream, especialmente cuando juegas este tipo de juegos. ¿Podrías jugar más RPGs?',
+                timestamp: new Date(Date.now() - 60000),
+                status: 'pending'
+            },
+            {
+                id: 3,
+                user: 'ChatModerator',
+                amount: 2.50,
+                currency: 'USD',
+                message: 'Saludos desde México. Tu comunidad es increíble y el chat siempre está muy activo.',
+                timestamp: new Date(Date.now() - 120000),
+                status: 'pending'
+            }
+        ];
+
+        let ttsQueue = [...sampleQueue];
+        let ttsEnabled = true;
+        let currentlyPlaying = null;
+
+        // Initialize TTS interface
+        function initializeTTS() {
+            renderQueue();
+            updateQueueCount();
+            setupSliders();
+            updateTTSStatus();
+        }
+
+        // Render TTS queue
+        function renderQueue() {
+            const queueList = document.getElementById('queueList');
+            queueList.innerHTML = '';
+
+            if (ttsQueue.length === 0) {
+                queueList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #A9A9A9;">
+                        <svg width="48" height="48" fill="currentColor" viewBox="0 0 20 20" style="margin-bottom: 16px; opacity: 0.5;">
+                            <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z"/>
+                        </svg>
+                        <p>No hay mensajes en la cola</p>
+                        <p style="font-size: 12px; margin-top: 8px;">Los mensajes de donaciones aparecerán aquí</p>
+                    </div>
+                `;
+                return;
+            }
+
+            ttsQueue.forEach(item => {
+                const queueItem = document.createElement('div');
+                queueItem.className = `queue-item ${item.status}`;
+                queueItem.innerHTML = `
+                    <div class="queue-item-header">
+                        <div class="queue-item-user">${item.user}</div>
+                        <div class="queue-item-amount">$${item.amount.toFixed(2)} ${item.currency}</div>
+                    </div>
+                    
+                    <div class="queue-item-message">${item.message}</div>
+                    
+                    <div class="queue-item-actions">
+                        ${item.status === 'pending' ? `
+                            <button class="queue-btn play" onclick="playMessage(${item.id})">
+                                <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+                                </svg>
+                                Reproducir
+                            </button>
+                        ` : ''}
+                        
+                        ${item.status === 'playing' ? `
+                            <button class="queue-btn skip" onclick="skipMessage(${item.id})">
+                                <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798l-5.445-3.63z"/>
+                                </svg>
+                                Saltar
+                            </button>
+                        ` : ''}
+                        
+                        <button class="queue-btn remove" onclick="removeMessage(${item.id})">
+                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+                            </svg>
+                            Eliminar
+                        </button>
+                    </div>
+                `;
+                queueList.appendChild(queueItem);
+            });
+        }
+
+        // Update queue count
+        function updateQueueCount() {
+            const queueCount = document.getElementById('queueCount');
+            const count = ttsQueue.length;
+            queueCount.textContent = count === 0 ? 'Cola vacía' : 
+                                   count === 1 ? '1 mensaje' : 
+                                   `${count} mensajes`;
+        }
+
+        // Setup sliders
+        function setupSliders() {
+            const speedSlider = document.getElementById('speedSlider');
+            const pitchSlider = document.getElementById('pitchSlider');
+            const volumeSlider = document.getElementById('volumeSlider');
+            
+            const speedValue = document.getElementById('speedValue');
+            const pitchValue = document.getElementById('pitchValue');
+            const volumeValue = document.getElementById('volumeValue');
+
+            speedSlider.addEventListener('input', function() {
+                speedValue.textContent = this.value + 'x';
+            });
+
+            pitchSlider.addEventListener('input', function() {
+                pitchValue.textContent = this.value;
+            });
+
+            volumeSlider.addEventListener('input', function() {
+                volumeValue.textContent = this.value + '%';
+            });
+        }
+
+        // Update TTS status
+        function updateTTSStatus() {
+            const statusElement = document.getElementById('ttsStatus');
+            const enableBtn = document.getElementById('enableTtsBtn');
+            
+            if (ttsEnabled) {
+                statusElement.className = 'tts-status';
+                statusElement.innerHTML = '<div class="status-dot"></div>Activo';
+                enableBtn.innerHTML = `
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"/>
+                    </svg>
+                    Pausar TTS
+                `;
+                enableBtn.className = 'btn warning';
+            } else {
+                statusElement.className = 'tts-status disabled';
+                statusElement.innerHTML = '<div class="status-dot"></div>Desactivado';
+                enableBtn.innerHTML = `
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
+                    </svg>
+                    Activar TTS
+                `;
+                enableBtn.className = 'btn success';
+            }
+        }
+
+        // Toggle TTS
+        function toggleTTS() {
+            ttsEnabled = !ttsEnabled;
+            updateTTSStatus();
+            
+            if (!ttsEnabled) {
+                // Stop current playback
+                stopCurrentPlayback();
+            }
+        }
+
+        // Play message
+        function playMessage(id) {
+            if (!ttsEnabled) return;
+            
+            const message = ttsQueue.find(m => m.id === id);
+            if (!message) return;
+            
+            // Stop current playback
+            stopCurrentPlayback();
+            
+            // Set as playing
+            ttsQueue.forEach(m => m.status = m.id === id ? 'playing' : 'pending');
+            currentlyPlaying = id;
+            
+            // Simulate TTS playback
+            simulateTTSPlayback(message);
+            
+            renderQueue();
+        }
+
+        // Skip message
+        function skipMessage(id) {
+            stopCurrentPlayback();
+            
+            // Remove from queue or mark as completed
+            ttsQueue = ttsQueue.filter(m => m.id !== id);
+            
+            // Play next message if available
+            const nextMessage = ttsQueue.find(m => m.status === 'pending');
+            if (nextMessage && ttsEnabled) {
+                setTimeout(() => playMessage(nextMessage.id), 500);
+            }
+            
+            renderQueue();
+            updateQueueCount();
+        }
+
+        // Remove message
+        function removeMessage(id) {
+            if (currentlyPlaying === id) {
+                stopCurrentPlayback();
+            }
+            
+            ttsQueue = ttsQueue.filter(m => m.id !== id);
+            renderQueue();
+            updateQueueCount();
+        }
+
+        // Clear queue
+        function clearQueue() {
+            if (confirm('¿Estás seguro de que quieres limpiar toda la cola de TTS?')) {
+                stopCurrentPlayback();
+                ttsQueue = [];
+                renderQueue();
+                updateQueueCount();
+            }
+        }
+
+        // Stop current playback
+        function stopCurrentPlayback() {
+            if (currentlyPlaying) {
+                const playingMessage = ttsQueue.find(m => m.id === currentlyPlaying);
+                if (playingMessage) {
+                    playingMessage.status = 'pending';
+                }
+                currentlyPlaying = null;
+            }
+        }
+
+        // Simulate TTS playback
+        function simulateTTSPlayback(message) {
+            const duration = Math.max(3000, message.message.length * 100); // Simulate reading time
+            
+            setTimeout(() => {
+                if (currentlyPlaying === message.id) {
+                    // Message finished, remove from queue
+                    ttsQueue = ttsQueue.filter(m => m.id !== message.id);
+                    currentlyPlaying = null;
+                    
+                    // Play next message if available
+                    const nextMessage = ttsQueue.find(m => m.status === 'pending');
+                    if (nextMessage && ttsEnabled) {
+                        setTimeout(() => playMessage(nextMessage.id), 1000);
+                    }
+                    
+                    renderQueue();
+                    updateQueueCount();
+                }
+            }, duration);
+        }
+
+        // Test TTS
+        function testTTS() {
+            const testMessage = document.getElementById('testMessage').value.trim();
+            if (!testMessage) return;
+            
+            // Create a test message
+            const testItem = {
+                id: Date.now(),
+                user: 'Prueba',
+                amount: 0,
+                currency: 'USD',
+                message: testMessage,
+                timestamp: new Date(),
+                status: 'pending'
+            };
+            
+            // Add to front of queue
+            ttsQueue.unshift(testItem);
+            renderQueue();
+            updateQueueCount();
+            
+            // Play immediately
+            if (ttsEnabled) {
+                playMessage(testItem.id);
+            }
+        }
+
+        // Add new donation message (simulated)
+        function addDonationMessage(user, amount, message) {
+            const newMessage = {
+                id: Date.now(),
+                user: user,
+                amount: amount,
+                currency: 'USD',
+                message: message,
+                timestamp: new Date(),
+                status: 'pending'
+            };
+            
+            ttsQueue.push(newMessage);
+            renderQueue();
+            updateQueueCount();
+            
+            // Auto-play if no message is currently playing
+            if (ttsEnabled && !currentlyPlaying) {
+                setTimeout(() => playMessage(newMessage.id), 500);
+            }
+        }
+
+        // Simulate new donations
+        function simulateNewDonations() {
+            const sampleDonations = [
+                { user: 'NewViewer789', amount: 3.00, message: '¡Primera vez viendo tu stream y me encanta!' },
+                { user: 'RegularFan', amount: 7.50, message: 'Sigue así con el contenido, siempre me divierte mucho.' },
+                { user: 'BigSupporter', amount: 25.00, message: 'Donación para ayudar con el setup nuevo que mencionaste.' }
+            ];
+            
+            setInterval(() => {
+                if (Math.random() < 0.3) { // 30% chance every 10 seconds
+                    const donation = sampleDonations[Math.floor(Math.random() * sampleDonations.length)];
+                    addDonationMessage(donation.user, donation.amount, donation.message);
+                }
+            }, 10000);
+        }
+
+        // Platform selector functionality
+        document.querySelectorAll('.platform-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all buttons
+                document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Get platform colors
+                const platformColors = {
+                    'youtube': { primary: '#FF0000', glow: 'rgba(255, 0, 0, 0.2)' },
+                    'twitch': { primary: '#9146FF', glow: 'rgba(145, 70, 255, 0.2)' },
+                    'tiktok': { primary: '#25F4EE', glow: 'rgba(37, 244, 238, 0.2)' },
+                    'kick': { primary: '#53FC18', glow: 'rgba(83, 252, 24, 0.2)' }
+                };
+                
+                // Determine platform
+                let platform = 'twitch'; // default
+                if (this.classList.contains('youtube')) platform = 'youtube';
+                else if (this.classList.contains('tiktok')) platform = 'tiktok';
+                else if (this.classList.contains('kick')) platform = 'kick';
+                
+                const colors = platformColors[platform];
+                
+                // Update connection status
+                const platformText = this.textContent.trim();
+                const statusText = document.querySelector('.connection-status span');
+                statusText.textContent = `Conectado a ${platformText}`;
+                
+                // Update connection status colors
+                const connectionStatus = document.querySelector('.connection-status');
+                const statusDot = document.querySelector('.status-dot');
+                connectionStatus.style.background = colors.glow;
+                connectionStatus.style.borderColor = colors.primary + '50';
+                statusDot.style.background = colors.primary;
+                
+                // Update active nav item color
+                const activeNavItem = document.querySelector('.nav-item.active');
+                if (activeNavItem) {
+                    activeNavItem.style.background = colors.glow;
+                    activeNavItem.style.borderColor = colors.primary;
+                    activeNavItem.style.boxShadow = `0 0 20px ${colors.glow}`;
+                }
+            });
+        });
+
+        // Navigation functionality
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Initialize the TTS interface
+        initializeTTS();
+        
+        // Start simulating new donations
+        simulateNewDonations();
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9923032f017f55c3',t:'MTc2MTA3MzM3OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
