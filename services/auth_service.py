@@ -107,7 +107,7 @@ async def initiate_kick_auth() -> bool:
             access_token = token_data['access_token']; print("✅ Token Kick guardado.")
             print("🔎 Buscando info canal Kick..."); url = "https://api.kick.com/public/v1/users"; headers = {"Authorization": f"Bearer {access_token}"}
             response = await loop.run_in_executor(None, lambda: requests.get(url, headers=headers)); response.raise_for_status(); data = response.json()
-            if data.get("data"): user = data["data"][0]; config_data = {"CHANNEL_NAME": user["name"], "BROADCASTER_ID": user["user_id"]}; token_manager.save_kick_config(config_data); success = True
+            if data.get("data"): user = data["data"][0]; config_data = {"CHANNEL_NAME": user["name"], "BROADCASTER_ID": user["user_id"], "profile_image_url": user["profile_picture"]}; token_manager.save_kick_config(config_data); success = True
             else: print("❌ Info canal Kick vacía."); token_manager.delete_kick_files()
         except Exception as e: print(f"❌ Error auth Kick: {e}"); token_manager.delete_kick_files()
         finally: await api.close(); code_container.clear(); code_received_event.clear()
@@ -185,7 +185,8 @@ async def initiate_twitch_auth() -> bool:
                 "expires_in": tokens.get("expires_in"),
                 "username": user_data["login"],
                 "channel": user_data["login"], # Asumimos que el canal es el mismo
-                "user_id": user_data["id"]
+                "user_id": user_data["id"],
+                "profile_image_url": user_data["profile_image_url"]
             }
             token_manager.save_twitch_tokens(full_token_data)
             success = True

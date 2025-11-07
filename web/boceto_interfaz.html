@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamCore Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/streamcore_interface.css">
+    <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+    <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+    <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    SC
+                </div>
+                <div class="logo-text">
+                    StreamCore
+                </div>
+            </div>
+            <class="nav">
+                <div class="nav-item" onclick="window.location.href='boceto_interfaz.html'">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+                    </svg>
+                    <span class="nav-text">Dashboard</span>
+                </div>
+
+                <div class="nav-item" onclick="window.location.href='boceto_ui_commands.html'">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" />
+                    </svg>
+                    <span class="nav-text">Comandos</span>
+                </div>
+
+                <div class="nav-item" onclick="window.location.href='boceto_ui_tts.html'">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" />
+                    </svg>
+                    <span class="nav-text">TTS</span>
+                </div>
+
+                <div class="nav-item" onclick="window.location.href='streamcore_config.html'">
+                    <svg class="nav-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" />
+                    </svg>
+                    <span class="nav-text">Configuración</span>
+                </div>
+                </nav>
+                <div class="connection-status">
+                    <div class="status-dot"></div>
+                    <span style="font-size: 14px; font-weight: 500;">
+                        Conectado a Twitch
+                    </span>
+                </div>
+        </div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1 class="header-title">Dashboard Principal</h1>
+                <div class="platform-area">
+                    <div id="platformContainer"></div>
+                </div>
+            </div>
+            <!-- Metrics Grid -->
+            <div class="metrics-grid fade-in">
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        💬
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">
+                            2,847
+                        </div>
+                        <div class="metric-label">
+                            Mensajes Procesados
+                        </div>
+                        <div class="metric-change positive">
+                            +18% vs ayer
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        ⚡
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">
+                            156
+                        </div>
+                        <div class="metric-label">
+                            Comandos Ejecutados
+                        </div>
+                        <div class="metric-change positive">
+                            +23% vs ayer
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card assistance-card">
+                    <div class="metric-icon">
+                        📋
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">
+                            127
+                        </div>
+                        <div class="metric-label">
+                            Viewers Presentes
+                        </div>
+                        <div class="metric-change positive">
+                            +12 nuevos hoy
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card assistance-card">
+                    <div class="metric-icon">
+                        ✅
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">
+                            89.3%
+                        </div>
+                        <div class="metric-label">
+                            Tasa de Asistencia
+                        </div>
+                        <div class="metric-change positive">
+                            +5.2% vs ayer
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Features Section -->
+            <div class="features-section">
+                <h2 class="section-title">📋 Control de Asistencia</h2>
+                <div class="features-grid">
+                    <!-- Control de Asistencia -->
+                    <div class="feature-card assistance-feature bounce-in">
+                        <div class="feature-header">
+                            <div class="feature-icon">
+                                📋
+                            </div>
+                            <div class="feature-info">
+                                <h3>Pase de Lista de Viewers</h3>
+                                <p>Sistema automático que registra la asistencia de tus viewers, trackea su
+                                    participación y genera reportes de engagement para tu comunidad.</p>
+                            </div>
+                            <div class="feature-status active">
+                                <div class="status-dot"></div><span>Registrando</span>
+                            </div>
+                        </div>
+                        <div class="feature-stats">
+                            <div class="stat-item"><span class="stat-value">127</span> <span
+                                    class="stat-label">Presentes hoy</span>
+                            </div>
+                            <div class="stat-item"><span class="stat-value">89.3%</span> <span class="stat-label">Tasa
+                                    asistencia</span>
+                            </div>
+                            <div class="stat-item"><span class="stat-value">45min</span> <span class="stat-label">Tiempo
+                                    promedio</span>
+                            </div>
+                            <div class="stat-item"><span class="stat-value">12</span> <span class="stat-label">Nuevos
+                                    viewers</span>
+                            </div>
+                        </div>
+                        <div class="feature-actions"><button class="btn-action">Ver Lista</button> <button
+                                class="btn-action success">Exportar</button> <button
+                                class="btn-action primary">Configurar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Quick Actions -->
+            <div class="quick-actions fade-in">
+                <div class="quick-action" onclick="viewAttendanceList()">
+                    <div class="quick-action-icon">
+                        📋
+                    </div>
+                    <div class="quick-action-title">
+                        Lista Completa
+                    </div>
+                    <div class="quick-action-desc">
+                        Ver todos los viewers
+                    </div>
+                </div>
+                <div class="quick-action" onclick="exportAttendance()">
+                    <div class="quick-action-icon">
+                        📊
+                    </div>
+                    <div class="quick-action-title">
+                        Exportar Datos
+                    </div>
+                    <div class="quick-action-desc">
+                        Descargar reportes
+                    </div>
+                </div>
+                <div class="quick-action" onclick="configureAttendance()">
+                    <div class="quick-action-icon">
+                        ⚙️
+                    </div>
+                    <div class="quick-action-title">
+                        Configurar
+                    </div>
+                    <div class="quick-action-desc">
+                        Ajustar parámetros
+                    </div>
+                </div>
+                <div class="quick-action" onclick="viewStats()">
+                    <div class="quick-action-icon">
+                        📈
+                    </div>
+                    <div class="quick-action-title">
+                        Estadísticas
+                    </div>
+                    <div class="quick-action-desc">
+                        Análisis detallado
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/streamcore_interface.js" type="text/javascript"></script>
+</body>
+</html>

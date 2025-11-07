@@ -13,7 +13,7 @@ from connectors import twitch_connector
 
 # --- Define rutas ---
 script_dir = pathlib.Path(__file__).parent.resolve()
-html_path = script_dir / 'web' / 'html' / 'boceto_ui_config.html'
+html_path = script_dir / 'web' / 'streamcore_config.html'
 html_file_abs_path = str(html_path)
 # --------------------
 
