@@ -34,11 +34,9 @@ class KickConnector:
                  client_secret=KICK_CLIENT_SECRET,
                  db_path=token_manager.KICK_DB_PATH # Usa la ruta persistente
             )
-            # Registra el handler ANTES de conectar
             self.api.add_message_handler(self._handle_message)
             print("(Kick Connector) Controlador de mensajes registrado.")
             
-            # Inicia el refresco automático (si es necesario)
             await self.api.start_token_refresh()
 
             print(f"(Kick Connector) Conectando al chatroom de {self.channel_name}...")
@@ -71,19 +69,19 @@ class KickConnector:
         
         print(f"(Kick) {sender}: {content}")
 
-        # Publica el mensaje crudo en el bus
         bus.publish("chat:message_received", {
             "platform": "kick",
             "sender": sender,
             "content": content,
-            "raw_message": message # Pasa el diccionario completo
+            "raw_message": message 
         })
 
 # --- Instancia y funciones de control ---
 kick_connector_instance = KickConnector()
 
 async def initialize():
-    # Intenta iniciar automáticamente si está configurado
+    # Esta función ya no es llamada por main.py,
+    # pero la dejamos por si es útil en el futuro.
     if token_manager.check_tokens_exist("kick"):
         await kick_connector_instance.start()
 
@@ -94,8 +92,28 @@ async def shutdown():
 def on_kick_logout(data):
     """Escucha el evento de logout para detener el conector."""
     print("(Kick Connector) Recibido evento de logout.")
-    # Usamos asyncio.create_task para llamar a la función async stop
     if kick_connector_instance.running:
         asyncio.create_task(kick_connector_instance.stop())
 
 bus.subscribe("auth:kick_logout", on_kick_logout)
+
+# --- ¡NUEVO BLOQUE! ---
+# Suscripción a evento de login
+def on_kick_auth_complete(data):
+    """Escucha el evento de login exitoso para iniciar el conector."""
+    if data.get("success") and not kick_connector_instance.running:
+        print("(Kick Connector) Autenticación completada, iniciando...")
+        # Usamos asyncio.create_task para llamar a la función async start
+        # desde un contexto que podría no ser 'async'
+        
+        # Necesitamos encontrar o crear un bucle de eventos
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        loop.create_task(kick_connector_instance.start())
+
+bus.subscribe("auth:kick_completed", on_kick_auth_complete)
+# --- FIN DEL NUEVO BLOQUE ---

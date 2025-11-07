@@ -4,8 +4,9 @@ import threading
 import os
 # --- IMPORTACIONES MODIFICADAS ---
 from services import auth_service
-from data import tokens as token_manager # Importamos el token_manager
+from data import tokens as token_manager
 from event_bus import bus
+import data.database as db
 
 class Api:
     def __init__(self):
@@ -132,3 +133,35 @@ class Api:
         bus.publish(f"auth:{platform}_logout", {"success": success})
         
         return {"success": success, "message": f"Desvinculación de {platform} {'exitosa' if success else 'fallida'}."}
+    
+# --- ¡NUEVAS FUNCIONES CRUD! ---
+    
+    def get_commands(self):
+        """Obtiene todos los comandos de la BD."""
+        print("(API) Solicitando 'get_commands'")
+        return db.get_commands()
+
+    def create_command(self, data):
+        """Crea un nuevo comando."""
+        print(f"(API) Solicitando 'create_command' con: {data['name']}")
+        return db.create_command(data)
+
+    def update_command(self, command_id, data):
+        """Actualiza un comando existente."""
+        print(f"(API) Solicitando 'update_command' para ID: {command_id}")
+        return db.update_command(command_id, data)
+
+    def delete_command(self, command_id):
+        """Elimina un comando."""
+        print(f"(API) Solicitando 'delete_command' para ID: {command_id}")
+        return db.delete_command(command_id)
+
+    def toggle_command_status(self, command_id, status):
+        """Cambia el estado 'active' de un comando."""
+        print(f"(API) Solicitando 'toggle_command_status' para ID: {command_id}")
+        return db.toggle_command_status(command_id, status)
+        
+    def get_all_asistencias(self):
+        """Obtiene todos los registros de asistencia."""
+        print("(API) Solicitando 'get_all_asistencias'")
+        return db.get_all_asistencias()

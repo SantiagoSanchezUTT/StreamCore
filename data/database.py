@@ -1,20 +1,38 @@
 import sqlite3
+import os # Necesitamos 'os' para crear directorios
 from .utils import get_persistent_data_path 
 
-# --- 1. RUTA ÚNICA Y CENTRALIZADA ---
-DB_PATH = get_persistent_data_path("bot_database.db")
+APP_DATA_ROOT = os.path.dirname(get_persistent_data_path("dummy.txt"))
+
+# Creamos la ruta a nuestra carpeta "bd"
+DB_DIR = os.path.join(APP_DATA_ROOT, "bd")
+
+# Aseguramos que el directorio "bd" exista
+os.makedirs(DB_DIR, exist_ok=True)
+
+# Creamos la ruta final al archivo de la base de datos
+DB_PATH = os.path.join(DB_DIR, "streamcore.db")
+
 print(f"Base de datos unificada en: {DB_PATH}")
 
-# --- 2. CONEXIÓN ÚNICA ---
+
+# --- 2. CONEXIÓN ---
 def get_connection():
+    """Conexión simple. Usada por funciones que no devuelven filas."""
     return sqlite3.connect(DB_PATH)
 
-# --- 3. INICIALIZACIÓN (Lógica de !asistencia) ---
+def get_db_conn_dict():
+    """Conexión que devuelve diccionarios. Usada por funciones 'get'."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# --- 3. INICIALIZACIÓN (Tablas fusionadas) ---
 def init_db():
     with get_connection() as conn:
         cursor = conn.cursor()
         
-        # Tabla 1: Asistencias (Tu lógica de lealtad)
+        # Tabla 1: Asistencias
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS asistencias (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,26 +43,29 @@ def init_db():
             )
         """)
 
-        # Tabla 2: Comandos (Para !redes, !hola, etc.)
+        # Tabla 2: Comandos
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS commands (
+            CREATE TABLE IF NOT EXISTS comandos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                command TEXT NOT NULL,
+                name TEXT NOT NULL UNIQUE,          -- ej: !social
+                type TEXT NOT NULL,                 -- ej: text, counter
                 response TEXT NOT NULL,
-                platform TEXT NOT NULL,
-                level TEXT DEFAULT 'normal',
-                refresh_time INTEGER DEFAULT 0,
-                UNIQUE(command, platform)
+                cooldown INTEGER DEFAULT 5,
+                permission TEXT DEFAULT 'everyone', -- ej: everyone, mods
+                active BOOLEAN DEFAULT 1,           -- Toggle global
+                uses INTEGER DEFAULT 0,
+                active_twitch BOOLEAN DEFAULT 1,    -- Toggle Twitch
+                active_kick BOOLEAN DEFAULT 1       -- Toggle Kick
             )
         """)
         
         conn.commit()
-    print("🧩 Tablas de Base de Datos (Asistencias y Comandos) aseguradas.")
+    print("Tablas de Base de Datos (Asistencias y Comandos) aseguradas.")
 
 
 # --- 4. FUNCIONES CRUD ---
 
-# --- Funciones de Asistencia ---
+# --- Funciones de Asistencia (Tu lógica original, sin cambios) ---
 def log_user_assistance(nickname: str, platform: str):
     """
     Registra una asistencia. Si el usuario ya existe, incrementa
@@ -62,66 +83,102 @@ def log_user_assistance(nickname: str, platform: str):
 
 def get_all_asistencias():
     """Obtiene la lista de todas las asistencias, ordenadas."""
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
+    # Usamos la conexión que devuelve diccionarios
+    with get_db_conn_dict() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, platform, nickname, total_asistencias 
             FROM asistencias ORDER BY total_asistencias DESC
         """)
-        return cursor.fetchall()
+        # Devolvemos una lista de diccionarios
+        return [dict(row) for row in cursor.fetchall()]
 
-# --- Funciones de Comandos ---
-def add_command(command: str, response: str, platform: str, level: str = 'normal', refresh_time: int = 0):
+# --- Funciones de Comandos (¡NUEVA LÓGICA PARA LA UI!) ---
+# Estas reemplazan tus antiguas 'add_command', 'get_command', etc.
+
+def get_commands():
+    """READ: Obtiene todos los comandos para la UI."""
+    with get_db_conn_dict() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM comandos ORDER BY name ASC")
+        commands = [dict(row) for row in cursor.fetchall()]
+        return commands
+
+def create_command(data):
+    """CREATE: Añade un nuevo comando desde la UI."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """INSERT INTO comandos 
+                   (name, type, response, cooldown, permission, active, 
+                    active_twitch, active_kick) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    data['name'], data['type'], data['response'], data['cooldown'],
+                    data['permission'], data['active'],
+                    data['active_twitch'], data['active_kick']
+                )
+            )
+            conn.commit()
+            new_id = cursor.lastrowid
+            return {"success": True, "id": new_id}
+        except sqlite3.IntegrityError:
+            return {"success": False, "error": "El nombre del comando ya existe"}
+
+def update_command(command_id, data):
+    """UPDATE: Actualiza un comando existente desde la UI."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """UPDATE comandos SET 
+                   name = ?, type = ?, response = ?, cooldown = ?, 
+                   permission = ?, active = ?,
+                   active_twitch = ?, active_kick = ?
+                   WHERE id = ?""",
+                (
+                    data['name'], data['type'], data['response'], data['cooldown'],
+                    data['permission'], data['active'],
+                    data['active_twitch'], data['active_kick'],
+                    command_id
+                )
+            )
+            conn.commit()
+            return {"success": True}
+        except sqlite3.IntegrityError:
+            return {"success": False, "error": "El nombre del comando ya existe"}
+
+def delete_command(command_id):
+    """DELETE: Elimina un comando desde la UI."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM comandos WHERE id = ?", (command_id,))
+        conn.commit()
+        return {"success": True}
+
+def toggle_command_status(command_id, status):
+    """UPDATE: Cambia el estado (activo/inactivo) global."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE comandos SET active = ? WHERE id = ?", (status, command_id))
+        conn.commit()
+        return {"success": True}
+
+# --- 5. LÓGICA DEL BOT (Para leer comandos en el chat) ---
+# Esta función es la que usará tu bot de chat (no la UI)
+def get_command_for_bot(command_name: str):
     """
-    Añade o REEMPLAZA un comando para una plataforma.
+    Obtiene los datos de un comando específico para que el bot lo ejecute.
     """
-    with get_connection() as conn:
+    with get_db_conn_dict() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT OR REPLACE INTO commands (command, response, platform, level, refresh_time)
-            VALUES (?, ?, ?, ?, ?)
-        """, (command.lower(), response, platform.lower(), level, refresh_time))
-        conn.commit()
+        cursor.execute("SELECT * FROM comandos WHERE name = ?", (command_name.lower(),))
+        row = cursor.fetchone()
+        if row:
+            return dict(row) # Devuelve el comando como un diccionario
+        return None # No se encontró el comando
 
-def get_command(command: str, platform: str):
-    """Obtiene un comando específico para una plataforma."""
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT response, level, refresh_time FROM commands WHERE command = ? AND platform = ?", 
-                       (command.lower(), platform.lower()))
-        return cursor.fetchone()
-
-def list_commands(platform: str = None):
-    """Lista todos los comandos, opcionalmente filtrados por plataforma."""
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        if platform:
-            cursor.execute("SELECT * FROM commands WHERE platform = ?", (platform.lower(),))
-        else:
-            cursor.execute("SELECT * FROM commands ORDER BY platform, command")
-        return cursor.fetchall()
-
-def delete_command(command_id: int):
-    """Elimina un comando por su ID."""
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM commands WHERE id = ?", (command_id,))
-        conn.commit()
-        return cursor.rowcount > 0
-
-def update_command(command_id: int, response: str, level: str, refresh_time: int):
-    """Actualiza un comando por su ID."""
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE commands SET response = ?, level = ?, refresh_time = ?
-            WHERE id = ?
-        """, (response, level, refresh_time, command_id))
-        conn.commit()
-        return cursor.rowcount > 0
 
 # --- INICIALIZACIÓN AUTOMÁTICA ---
 # Se ejecuta la primera vez que alguien importa este archivo.

@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+import threading # <<< --- ¡IMPORTANTE AÑADIR ESTA LÍNEA!
 
 class EventBus:
     def __init__(self):
@@ -17,25 +18,32 @@ class EventBus:
             self._subscribers[event_type].remove(callback)
             print(f"Desuscribiendo '{getattr(callback, '__name__', 'callback')}' del evento '{event_type}'")
         except ValueError:
-            pass # Ignora si no estaba suscrito
+            pass 
 
     def publish(self, event_type: str, data=None):
         """Envía un evento a todos los suscriptores."""
-        print(f"Publicando evento '{event_type}' con datos: {data}")
+        # Quitamos el log de 'data' para no spamear la consola con mensajes
+        print(f"Publicando evento '{event_type}'...") 
+        
         if event_type in self._subscribers:
-            # Usamos asyncio.create_task para no bloquear si un callback es async
             for callback in self._subscribers[event_type]:
+                
                 if asyncio.iscoroutinefunction(callback):
-                    asyncio.create_task(callback(data))
+                    def run_async_task(coro, data):
+                        try:
+                            asyncio.run(coro(data))
+                        except Exception as e:
+                            print(f"Error en hilo de callback async para '{event_type}': {e}")
+                    
+                    threading.Thread(target=run_async_task, args=(callback, data), daemon=True).start()
+                
                 else:
+                    # Los callbacks síncronos se ejecutan directamente
                     try:
-                        # Si el callback no es async, lo ejecutamos directamente
-                        # Idealmente, callbacks largos deberían ser async o correr en hilos
                         callback(data)
                     except Exception as e:
                         print(f"Error ejecutando callback síncrono para '{event_type}': {e}")
 
 
 # Instancia global única del bus de eventos
-# Otros módulos importarán esta instancia: from event_bus import bus
 bus = EventBus()

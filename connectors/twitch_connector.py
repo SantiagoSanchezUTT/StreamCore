@@ -24,7 +24,6 @@ class _TwitchIRCBot:
         self.sock.send(f"NICK {self.username}\r\n".encode('utf-8'))
         self.sock.send(f"JOIN {self.channel}\r\n".encode('utf-8'))
         
-        # Pedimos los "Tags" (metadatos)
         self.sock.send("CAP REQ :twitch.tv/tags\r\n".encode('utf-8'))
         print(f"(Twitch IRC) Conectado al chat de {self.channel}")
 
@@ -64,13 +63,12 @@ class _TwitchIRCBot:
                         username = tags.get('display-name', 'Desconocido')
                         content = line.split("PRIVMSG",1)[1].split(":",1)[1]
                         
-                        # Publica el mensaje usando el callback
                         self.message_callback({
                             "platform": "twitch",
                             "sender": username,
                             "content": content,
-                            "raw_message": line, # Pasa la línea cruda
-                            "tags": tags # Pasa los tags
+                            "raw_message": line, 
+                            "tags": tags 
                         })
                         
             except Exception as e:
@@ -82,14 +80,17 @@ class _TwitchIRCBot:
 
     def start(self):
         self.connect()
-        # Iniciar la escucha en un hilo separado
         listener_thread = threading.Thread(target=self.listen, daemon=True)
         listener_thread.start()
         print("(Twitch IRC) Hilo de escucha iniciado.")
     
     def stop(self):
         self.running = False
-        self.sock.close() # Cierra el socket para forzar la salida del hilo
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR) # Notifica al hilo que cierre
+        except OSError:
+            pass # El socket ya podría estar cerrado
+        self.sock.close() 
         print("(Twitch IRC) Detenido.")
 
 # --- Clase Conector (La que tu app ve) ---
@@ -98,12 +99,12 @@ class TwitchConnector:
         self.bot: _TwitchIRCBot = None
         self.running = False
         
-        # Suscribirse a eventos del bus (igual que Kick)
         bus.subscribe("auth:twitch_logout", self.on_logout)
-        
-        # !! DIFERENCIA CLAVE !!
-        # El conector escucha las respuestas para ENVIARLAS
         bus.subscribe("command:reply", self.on_reply)
+        
+        # --- ¡NUEVA LÍNEA! ---
+        # Suscripción al evento de login exitoso
+        bus.subscribe("auth:twitch_completed", self.on_auth_complete)
 
     def start(self):
         if self.running: return True
@@ -119,13 +120,10 @@ class TwitchConnector:
                 username=tokens["username"],
                 token=tokens["access_token"],
                 channel=tokens["channel"],
-                message_callback=self._handle_message # Pasa la función de publicador
+                message_callback=self._handle_message 
             )
-            self.bot.start() # Inicia el bot (conexión e hilo)
+            self.bot.start() 
             self.running = True
-            
-            # (Opcional) Envía un mensaje de prueba al conectar
-            asyncio.create_task(self.send_test_message())
             
             return True
         except Exception as e:
@@ -135,7 +133,7 @@ class TwitchConnector:
             return False
 
     async def send_test_message(self):
-        await asyncio.sleep(2) # Espera 2 seg
+        await asyncio.sleep(2) 
         if self.bot:
             self.bot.send_message("✅ Bot de Twitch conectado.")
 
@@ -153,8 +151,6 @@ class TwitchConnector:
     def _handle_message(self, message: dict):
         """Callback del IRC, publica en el bus."""
         print(f"(Twitch) {message['sender']}: {message['content']}")
-        
-        # Publica el mensaje crudo en el bus (igual que Kick)
         bus.publish("chat:message_received", message)
 
     # --- Manejadores de eventos del Bus ---
@@ -167,7 +163,7 @@ class TwitchConnector:
     def on_reply(self, data: dict):
         """Escucha el evento de respuesta para ENVIAR."""
         if data.get("platform") != "twitch":
-            return # Ignora si no es para Twitch
+            return 
         
         if self.bot and self.running:
             response = data.get("response")
@@ -176,10 +172,20 @@ class TwitchConnector:
         else:
             print("(Twitch Connector) Quiso enviar respuesta pero no está conectado.")
 
-# --- Instancia y funciones de control (igual que Kick) ---
+    # --- ¡NUEVA FUNCIÓN! ---
+    def on_auth_complete(self, data):
+        """Escucha el evento de login exitoso."""
+        if data.get("success") and not self.running:
+            print("(Twitch Connector) Autenticación completada, iniciando...")
+            # start() es síncrono y maneja su propio hilo,
+            # por lo que es seguro llamarlo directamente.
+            self.start()
+
+# --- Instancia y funciones de control ---
 twitch_connector_instance = TwitchConnector()
 
 def initialize():
+    # Esta función ya no es llamada por main.py
     if token_manager.check_tokens_exist("twitch"):
         return twitch_connector_instance.start()
     return False
