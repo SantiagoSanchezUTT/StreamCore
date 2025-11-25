@@ -96,6 +96,26 @@ def process_chat_message(data: dict):
 
         return
 
+    if command_name == "!s":
+        texto = content[len("!s"):].strip()
+    
+        if not texto:
+            return
+    
+        # Crear texto con "usuario dice"
+        tts_text = f"{sender} dice: {texto}"
+    
+        # Generar TTS usando el texto modificado
+        from api import Api
+        api = Api()
+        audio = api.generate_tts(tts_text)
+    
+        # Enviar a UI para cola
+        api.tts_enqueue(sender, tts_text)
+    
+        return
+
+
     # --- LÓGICA DE COMANDOS DINÁMICOS ---
     if command_name.startswith("!"):
         

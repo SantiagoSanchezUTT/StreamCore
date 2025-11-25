@@ -2,6 +2,7 @@ import webview
 import os
 import pathlib
 import threading
+import json
 import asyncio
 from api import Api
 from event_bus import bus
@@ -86,6 +87,30 @@ if __name__ == '__main__':
     print("   - Creando hilo para chequeo inicial de conectores...")
     connector_thread = threading.Thread(target=run_async_connectors_in_thread, daemon=True)
     connector_thread.start()
+    
+    def forward_tts_event():
+        """
+        Escucha 'tts:new' en el event bus y lo despacha al frontend
+        como CustomEvent('tts:new', { detail: <json> }).
+        """
+        def _handler(data):
+            try:
+                payload = json.dumps(data)
+            except Exception as e:
+                print(f"[forward_tts_event] Error serializando payload: {e}")
+                # fallback mínimo
+                payload = json.dumps({"user": str(data.get("user", "")), "message": str(data.get("message", ""))})
+            script = f"window.dispatchEvent(new CustomEvent('tts:new', {{ detail: {payload} }}));"
+            try:
+                window.evaluate_js(script)
+            except Exception as e:
+                print(f"[forward_tts_event] Error al ejecutar evaluate_js: {e}")
+
+        bus.subscribe("tts:new", _handler)
+
+    # Llamada
+    forward_tts_event()
+
     
     print("Iniciando interfaz gráfica...")
     webview.start(debug=True)

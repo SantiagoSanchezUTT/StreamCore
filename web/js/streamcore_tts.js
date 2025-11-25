@@ -1,117 +1,187 @@
-// Sample TTS queue data
-const sampleQueue = [
-    {
-        id: 1,
-        user: 'StreamFan123',
-        amount: 5.00,
-        currency: 'USD',
-        message: '¡Hola streamer! Gracias por el contenido increíble. Sigue así, eres el mejor.',
-        timestamp: new Date(Date.now() - 30000),
-        status: 'playing'
-    },
-    {
-        id: 2,
-        user: 'GamerPro456',
-        amount: 10.00,
-        currency: 'USD',
-        message: 'Me encanta tu stream, especialmente cuando juegas este tipo de juegos. ¿Podrías jugar más RPGs?',
-        timestamp: new Date(Date.now() - 60000),
-        status: 'pending'
-    },
-    {
-        id: 3,
-        user: 'ChatModerator',
-        amount: 2.50,
-        currency: 'USD',
-        message: 'Saludos desde México. Tu comunidad es increíble y el chat siempre está muy activo.',
-        timestamp: new Date(Date.now() - 120000),
-        status: 'pending'
-    }
-];
+// streamcore_tts.js - TTS con WebAudio profesional (pitch real, speed real)
 
-let ttsQueue = [...sampleQueue];
+// Cola de TTS
+let ttsQueue = []; // { id, user, message, audio, status: 'pending'|'playing' }
+let currentlyPlayingId = null;
 let ttsEnabled = true;
-let currentlyPlaying = null;
 
-// Initialize TTS interface
-function initializeTTS() {
-    renderQueue();
-    updateQueueCount();
-    setupSliders();
-    updateTTSStatus();
-}
+// Audio / WebAudio
+let audioCtx = null;
+let gainNode = null;
+let currentSource = null;
 
-// Render TTS queue
-function renderQueue() {
-    const queueList = document.getElementById('queueList');
-    queueList.innerHTML = '';
+// Valores de control (por defecto)
+let controlVolume = 0.8; // 0..1
+let controlSpeed = 1.0;  // multiplicador (0.5 .. 2)
+let controlPitchSemitones = 0; // semitones (-12 .. +12)
 
-    if (ttsQueue.length === 0) {
-        queueList.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: #A9A9A9;">
-                        <svg width="48" height="48" fill="currentColor" viewBox="0 0 20 20" style="margin-bottom: 16px; opacity: 0.5;">
-                            <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z"/>
-                        </svg>
-                        <p>No hay mensajes en la cola</p>
-                        <p style="font-size: 12px; margin-top: 8px;">Los mensajes de donaciones aparecerán aquí</p>
-                    </div>
-                `;
-        return;
-    }
-
-    ttsQueue.forEach(item => {
-        const queueItem = document.createElement('div');
-        queueItem.className = `queue-item ${item.status}`;
-        queueItem.innerHTML = `
-                    <div class="queue-item-header">
-                        <div class="queue-item-user">${item.user}</div>
-                        <div class="queue-item-amount">$${item.amount.toFixed(2)} ${item.currency}</div>
-                    </div>
-                    
-                    <div class="queue-item-message">${item.message}</div>
-                    
-                    <div class="queue-item-actions">
-                        ${item.status === 'pending' ? `
-                            <button class="queue-btn play" onclick="playMessage(${item.id})">
-                                <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
-                                </svg>
-                                Reproducir
-                            </button>
-                        ` : ''}
-                        
-                        ${item.status === 'playing' ? `
-                            <button class="queue-btn skip" onclick="skipMessage(${item.id})">
-                                <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798l-5.445-3.63z"/>
-                                </svg>
-                                Saltar
-                            </button>
-                        ` : ''}
-                        
-                        <button class="queue-btn remove" onclick="removeMessage(${item.id})">
-                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
-                            </svg>
-                            Eliminar
-                        </button>
-                    </div>
-                `;
-        queueList.appendChild(queueItem);
+// ----------------- UTILIDADES -----------------
+function escapeHtml(text){
+    return String(text || "").replace(/[&<>"']/g, function(m){
+        return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[m];
     });
 }
 
-// Update queue count
-function updateQueueCount() {
-    const queueCount = document.getElementById('queueCount');
-    const count = ttsQueue.length;
-    queueCount.textContent = count === 0 ? 'Cola vacía' :
-        count === 1 ? '1 mensaje' :
-            `${count} mensajes`;
+// ----------------- UI / Cola -----------------
+function updateQueueUI(){
+    const list = document.getElementById('queueList');
+    const count = document.getElementById('queueCount');
+    if(!list || !count) return;
+
+    list.innerHTML = '';
+    if(ttsQueue.length === 0){
+        list.innerHTML = `<div style="padding:24px; color:#A9A9A9;">No hay mensajes en la cola</div>`;
+        count.textContent = 'Cola vacía';
+        return;
+    }
+
+    count.textContent = ttsQueue.length === 1 ? '1 mensaje' : `${ttsQueue.length} mensajes`;
+
+    ttsQueue.forEach(item=>{
+        const div = document.createElement('div');
+        div.className = 'queue-item ' + (item.status || 'pending');
+        div.style.padding = '12px';
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="font-size:14px;">${escapeHtml(item.user)}</strong>
+                <span style="font-size:12px; opacity:0.8;">${item.status === 'playing' ? 'Reproduciendo' : 'En cola'}</span>
+            </div>
+            <div style="margin-top:8px; font-size:13px;">${escapeHtml(item.message)}</div>
+            <div style="margin-top:8px;">
+                <button class="btn" onclick="skipTTS(${item.id})" style="margin-right:8px;">Saltar</button>
+                <button class="btn" onclick="removeTTS(${item.id})">Eliminar</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
 }
 
-// Setup sliders
-function setupSliders() {
+function enqueueTTS(user, message, audioBase64=null){
+    const item = {
+        id: Date.now() + Math.floor(Math.random()*999),
+        user: user || 'Anon',
+        message: message || '',
+        audio: audioBase64 || null,
+        status: 'pending'
+    };
+    ttsQueue.push(item);
+    updateQueueUI();
+
+    if(!currentlyPlayingId && ttsEnabled){
+        playNextTTS();
+    }
+}
+
+// ----------------- WebAudio Setup -----------------
+function setupAudioSystemPro(){
+    if(!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(!gainNode){
+        gainNode = audioCtx.createGain();
+        gainNode.gain.value = controlVolume;
+        gainNode.connect(audioCtx.destination);
+    }
+}
+
+// ----------------- Reproducción profesional -----------------
+async function playNextTTS(){
+    if(!ttsEnabled) return;
+    if(currentlyPlayingId) return;
+
+    const next = ttsQueue.find(i=>i.status==='pending');
+    if(!next) return;
+
+    next.status = 'playing';
+    currentlyPlayingId = next.id;
+    updateQueueUI();
+
+    setupAudioSystemPro();
+
+    try {
+        let base64Audio = next.audio;
+
+        if(!base64Audio){
+            if(window.pywebview && window.pywebview.api && window.pywebview.api.generate_tts){
+                const res = await window.pywebview.api.generate_tts(next.message);
+                if(res && res.success && res.data){
+                    base64Audio = res.data;
+                } else {
+                    console.warn('generate_tts fallback falló', res);
+                    finishCurrentAndContinue(next.id);
+                    return;
+                }
+            } else {
+                console.warn('No hay audio ni API para generar TTS');
+                finishCurrentAndContinue(next.id);
+                return;
+            }
+        }
+
+        // Decodificar base64 a ArrayBuffer
+        const response = await fetch(base64Audio);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        // Detener cualquier audio actual
+        if(currentSource){
+            currentSource.stop();
+        }
+
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.playbackRate.value = controlSpeed;
+        source.detune.value = controlPitchSemitones * 100; // pitch en cents
+        source.connect(gainNode);
+
+        source.onended = () => {
+            currentSource = null;
+            finishCurrentAndContinue(next.id);
+        };
+
+        currentSource = source;
+        source.start();
+
+    } catch(err){
+        console.error('Error reproduciendo TTS:', err);
+        finishCurrentAndContinue(next.id);
+    }
+}
+
+function finishCurrentAndContinue(id){
+    ttsQueue = ttsQueue.filter(i=>i.id!==id);
+    currentlyPlayingId = null;
+    updateQueueUI();
+    setTimeout(()=>playNextTTS(), 200);
+}
+
+// ----------------- Saltar / Eliminar -----------------
+function skipTTS(id){
+    if(currentlyPlayingId===id && currentSource){
+        currentSource.stop();
+        currentSource = null;
+        finishCurrentAndContinue(id);
+    } else {
+        ttsQueue = ttsQueue.filter(i=>i.id!==id);
+        updateQueueUI();
+    }
+}
+
+function removeTTS(id){
+    skipTTS(id);
+}
+
+// ----------------- Sliders / Controles -----------------
+function applyControlsPro(){
+    if(gainNode) gainNode.gain.value = controlVolume;
+    if(currentSource){
+        currentSource.playbackRate.value = controlSpeed;
+        currentSource.detune.value = controlPitchSemitones*100;
+    }
+}
+
+function initControlsBindings(){
     const speedSlider = document.getElementById('speedSlider');
     const pitchSlider = document.getElementById('pitchSlider');
     const volumeSlider = document.getElementById('volumeSlider');
@@ -120,294 +190,79 @@ function setupSliders() {
     const pitchValue = document.getElementById('pitchValue');
     const volumeValue = document.getElementById('volumeValue');
 
-    speedSlider.addEventListener('input', function () {
-        speedValue.textContent = this.value + 'x';
-    });
+    if(speedSlider){
+        speedSlider.addEventListener('input', function(){
+            controlSpeed = parseFloat(this.value) || 1.0;
+            if(speedValue) speedValue.textContent = controlSpeed.toFixed(1)+'x';
+            applyControlsPro();
+        });
+        controlSpeed = parseFloat(speedSlider.value) || controlSpeed;
+        if(speedValue) speedValue.textContent = controlSpeed.toFixed(1)+'x';
+    }
 
-    pitchSlider.addEventListener('input', function () {
-        pitchValue.textContent = this.value;
-    });
+    if(pitchSlider){
+        pitchSlider.addEventListener('input', function(){
+            controlPitchSemitones = parseInt(this.value,10)||0;
+            if(pitchValue) pitchValue.textContent = `${controlPitchSemitones} st`;
+            applyControlsPro();
+        });
+        controlPitchSemitones = parseInt(pitchSlider.value,10)||controlPitchSemitones;
+        if(pitchValue) pitchValue.textContent = `${controlPitchSemitones} st`;
+    }
 
-    volumeSlider.addEventListener('input', function () {
-        volumeValue.textContent = this.value + '%';
-    });
+    if(volumeSlider){
+        volumeSlider.addEventListener('input', function(){
+            controlVolume = Math.max(0, Math.min(1, parseFloat(this.value)/100));
+            if(volumeValue) volumeValue.textContent = Math.round(controlVolume*100)+'%';
+            applyControlsPro();
+        });
+        controlVolume = volumeSlider.value ? Math.max(0, Math.min(1, parseFloat(volumeSlider.value)/100)) : controlVolume;
+        if(volumeValue) volumeValue.textContent = Math.round(controlVolume*100)+'%';
+    }
 }
 
-// Update TTS status
-function updateTTSStatus() {
-    const statusElement = document.getElementById('ttsStatus');
+// ----------------- Eventos pywebview -----------------
+window.addEventListener("tts:new", async (ev) => {
+    try {
+        const data = ev.detail || {};
+        const user = data.user || 'Anon';
+        const message = data.message || '';
+        const audio = data.audio || null;
+        enqueueTTS(user,message,audio);
+    } catch(e){ console.error('Error manejando tts:new', e); }
+});
+
+// ----------------- Inicialización -----------------
+window.addEventListener('DOMContentLoaded',()=>{
+    setupAudioSystemPro();
+    initControlsBindings();
+
     const enableBtn = document.getElementById('enableTtsBtn');
-
-    if (ttsEnabled) {
-        statusElement.className = 'tts-status';
-        statusElement.innerHTML = '<div class="status-dot"></div>Activo';
-        enableBtn.innerHTML = `
-                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"/>
-                    </svg>
-                    Pausar TTS
-                `;
-        enableBtn.className = 'btn warning';
-    } else {
-        statusElement.className = 'tts-status disabled';
-        statusElement.innerHTML = '<div class="status-dot"></div>Desactivado';
-        enableBtn.innerHTML = `
-                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
-                    </svg>
-                    Activar TTS
-                `;
-        enableBtn.className = 'btn success';
-    }
-}
-
-// Toggle TTS
-function toggleTTS() {
-    ttsEnabled = !ttsEnabled;
-    updateTTSStatus();
-
-    if (!ttsEnabled) {
-        // Stop current playback
-        stopCurrentPlayback();
-    }
-}
-
-// Play message
-function playMessage(id) {
-    if (!ttsEnabled) return;
-
-    const message = ttsQueue.find(m => m.id === id);
-    if (!message) return;
-
-    // Stop current playback
-    stopCurrentPlayback();
-
-    // Set as playing
-    ttsQueue.forEach(m => m.status = m.id === id ? 'playing' : 'pending');
-    currentlyPlaying = id;
-
-    // Simulate TTS playback
-    simulateTTSPlayback(message);
-
-    renderQueue();
-}
-
-// Skip message
-function skipMessage(id) {
-    stopCurrentPlayback();
-
-    // Remove from queue or mark as completed
-    ttsQueue = ttsQueue.filter(m => m.id !== id);
-
-    // Play next message if available
-    const nextMessage = ttsQueue.find(m => m.status === 'pending');
-    if (nextMessage && ttsEnabled) {
-        setTimeout(() => playMessage(nextMessage.id), 500);
+    if(enableBtn){
+        enableBtn.addEventListener('click', ()=>{
+            ttsEnabled = !ttsEnabled;
+            enableBtn.textContent = ttsEnabled ? 'Pausar TTS' : 'Activar TTS';
+            if(ttsEnabled) playNextTTS();
+        });
+        enableBtn.textContent = ttsEnabled ? 'Pausar TTS' : 'Activar TTS';
     }
 
-    renderQueue();
-    updateQueueCount();
-}
-
-// Remove message
-function removeMessage(id) {
-    if (currentlyPlaying === id) {
-        stopCurrentPlayback();
-    }
-
-    ttsQueue = ttsQueue.filter(m => m.id !== id);
-    renderQueue();
-    updateQueueCount();
-}
-
-// Clear queue
-function clearQueue() {
-    if (confirm('¿Estás seguro de que quieres limpiar toda la cola de TTS?')) {
-        stopCurrentPlayback();
-        ttsQueue = [];
-        renderQueue();
-        updateQueueCount();
-    }
-}
-
-// Stop current playback
-function stopCurrentPlayback() {
-    if (currentlyPlaying) {
-        const playingMessage = ttsQueue.find(m => m.id === currentlyPlaying);
-        if (playingMessage) {
-            playingMessage.status = 'pending';
-        }
-        currentlyPlaying = null;
-    }
-}
-
-// Simulate TTS playback
-function simulateTTSPlayback(message) {
-    const duration = Math.max(3000, message.message.length * 100); // Simulate reading time
-
-    setTimeout(() => {
-        if (currentlyPlaying === message.id) {
-            // Message finished, remove from queue
-            ttsQueue = ttsQueue.filter(m => m.id !== message.id);
-            currentlyPlaying = null;
-
-            // Play next message if available
-            const nextMessage = ttsQueue.find(m => m.status === 'pending');
-            if (nextMessage && ttsEnabled) {
-                setTimeout(() => playMessage(nextMessage.id), 1000);
-            }
-
-            renderQueue();
-            updateQueueCount();
-        }
-    }, duration);
-}
-
-// Test TTS
-function testTTS() {
-    const testMessage = document.getElementById('testMessage').value.trim();
-    if (!testMessage) return;
-
-    // Create a test message
-    const testItem = {
-        id: Date.now(),
-        user: 'Prueba',
-        amount: 0,
-        currency: 'USD',
-        message: testMessage,
-        timestamp: new Date(),
-        status: 'pending'
-    };
-
-    // Add to front of queue
-    ttsQueue.unshift(testItem);
-    renderQueue();
-    updateQueueCount();
-
-    // Play immediately
-    if (ttsEnabled) {
-        playMessage(testItem.id);
-    }
-}
-
-// Add new donation message (simulated)
-function addDonationMessage(user, amount, message) {
-    const newMessage = {
-        id: Date.now(),
-        user: user,
-        amount: amount,
-        currency: 'USD',
-        message: message,
-        timestamp: new Date(),
-        status: 'pending'
-    };
-
-    ttsQueue.push(newMessage);
-    renderQueue();
-    updateQueueCount();
-
-    // Auto-play if no message is currently playing
-    if (ttsEnabled && !currentlyPlaying) {
-        setTimeout(() => playMessage(newMessage.id), 500);
-    }
-}
-
-// Simulate new donations
-function simulateNewDonations() {
-    const sampleDonations = [
-        { user: 'NewViewer789', amount: 3.00, message: '¡Primera vez viendo tu stream y me encanta!' },
-        { user: 'RegularFan', amount: 7.50, message: 'Sigue así con el contenido, siempre me divierte mucho.' },
-        { user: 'BigSupporter', amount: 25.00, message: 'Donación para ayudar con el setup nuevo que mencionaste.' }
-    ];
-
-    setInterval(() => {
-        if (Math.random() < 0.3) { // 30% chance every 10 seconds
-            const donation = sampleDonations[Math.floor(Math.random() * sampleDonations.length)];
-            addDonationMessage(donation.user, donation.amount, donation.message);
-        }
-    }, 10000);
-}
-
-// Platform selector functionality
-document.querySelectorAll('.platform-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-        // Remove active class from all buttons
-        document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
-        // Add active class to clicked button
-        this.classList.add('active');
-
-        // Get platform colors
-        const platformColors = {
-            'youtube': { primary: '#FF0000', glow: 'rgba(255, 0, 0, 0.2)' },
-            'twitch': { primary: '#9146FF', glow: 'rgba(145, 70, 255, 0.2)' },
-            'tiktok': { primary: '#25F4EE', glow: 'rgba(37, 244, 238, 0.2)' },
-            'kick': { primary: '#53FC18', glow: 'rgba(83, 252, 24, 0.2)' }
-        };
-
-        // Determine platform
-        let platform = 'twitch'; // default
-        if (this.classList.contains('youtube')) platform = 'youtube';
-        else if (this.classList.contains('tiktok')) platform = 'tiktok';
-        else if (this.classList.contains('kick')) platform = 'kick';
-
-        const colors = platformColors[platform];
-
-        // Update connection status
-        const platformText = this.textContent.trim();
-        const statusText = document.querySelector('.connection-status span');
-        statusText.textContent = `Conectado a ${platformText}`;
-
-        // Update connection status colors
-        const connectionStatus = document.querySelector('.connection-status');
-        const statusDot = document.querySelector('.status-dot');
-        connectionStatus.style.background = colors.glow;
-        connectionStatus.style.borderColor = colors.primary + '50';
-        statusDot.style.background = colors.primary;
-
-        // Update active nav item color
-        const activeNavItem = document.querySelector('.nav-item.active');
-        if (activeNavItem) {
-            activeNavItem.style.background = colors.glow;
-            activeNavItem.style.borderColor = colors.primary;
-            activeNavItem.style.boxShadow = `0 0 20px ${colors.glow}`;
-        }
-    });
+    updateQueueUI();
 });
 
-// Navigation functionality
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function () {
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        this.classList.add('active');
-    });
-});
+// ----------------- TEST TTS DESDE LA UI -----------------
+async function testTTS(){
+    const textEl = document.getElementById("testMessage");
+    if(!textEl) return alert("No se encontró textarea de prueba.");
+    const text = textEl.value.trim();
+    if(!text) return alert("Escribe un mensaje primero.");
 
-// Initialize the TTS interface
-initializeTTS();
-
-async function testTTS() {
-    const text = document.getElementById("testMessage").value;
-
-        if (!text.trim()) {
-        alert("Escribe un texto primero.");
-        return;
+    if(!window.pywebview || !window.pywebview.api || !window.pywebview.api.generate_tts){
+        return alert("API de TTS no disponible.");
     }
 
+    const res = await window.pywebview.api.generate_tts(text);
+    if(!res || !res.success || !res.data) return alert("No se pudo generar el TTS.");
 
-    const result = await window.pywebview.api.generate_tts(text);
-
-    if (result.success) {
-        const player = document.getElementById("ttsPlayer");
-        console.log(result);
-        player.src = result.data;
-        player.play();
-    }
-
+    enqueueTTS('Prueba', text, res.data);
 }
-
-
-
-// Start simulating new donations
-simulateNewDonations();
-
-(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9923032f017f55c3',t:'MTc2MTA3MzM3OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();

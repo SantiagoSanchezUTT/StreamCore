@@ -217,6 +217,31 @@ class Api:
             "data": f"data:audio/mp3;base64,{b64_audio}"
         }
     
+    def tts_enqueue(self, user, message):
+        """
+        Encola un mensaje TTS: genera el audio (base64) y publica
+        el evento 'tts:new' con user, message y audio (o audio = None si falla).
+        """
+        # Intentar generar el audio (reutiliza generate_tts)
+        try:
+            tts_result = self.generate_tts(message)
+            audio_b64 = tts_result.get("data") if tts_result.get("success") else None
+        except Exception as e:
+            print(f"[API] Error generando TTS en tts_enqueue: {e}")
+            audio_b64 = None
+    
+        payload = {
+            "user": user,
+            "message": message,
+            "audio": audio_b64
+        }
+    
+        print("Publicando evento 'tts:new'...")
+        bus.publish("tts:new", payload)
+    
+        return {"success": True}
+
+    
     def get_asistencias(self):
         """ Devuelve todas las asistencias para la UI """
         try:
@@ -229,7 +254,7 @@ class Api:
         try:
             nickname = nickname.lower()
             platform = platform.lower()
-    
+
             # 🔥 1. Verificar si ya registró asistencia en esta sesión
             global asistencias_registradas
             with asistencias_lock:
@@ -238,27 +263,24 @@ class Api:
                         "success": False,
                         "error": "Ya registraste tu asistencia en esta sesión 😊"
                     }
-    
+
                 # Marcar como registrado
                 asistencias_registradas.add((nickname, platform))
-    
+
             # 🔥 2. Registrar realmente en la BD
             log_user_assistance(nickname, platform)
-    
+
             return {
                 "success": True,
                 "message": "Asistencia registrada"
             }
-    
+
         except Exception as e:
             return {
                 "success": False,
                 "error": f"Error al registrar asistencia: {str(e)}"
             }
 
-
-
-    # UI — eliminar asistencia
     def delete_asistencia(self, asistencia_id):
         try:
             with get_connection() as conn:
@@ -278,8 +300,6 @@ class Api:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-
-    # UI — editar nickname
     def editar_asistencia(self, asistencia_id, nuevo_total):
         try:
             nuevo_total = int(nuevo_total)
