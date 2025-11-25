@@ -1,19 +1,22 @@
-# En: src/api.py
 import asyncio
 import threading
 import os
-# --- IMPORTACIONES MODIFICADAS ---
 from services import auth_service
 from data import tokens as token_manager
 from event_bus import bus
 import data.database as db
+from processing.tts_handler import tts_handler
+
+APP_DATA = os.path.join(os.getenv("LOCALAPPDATA"), "StreamCoreData")
+TTS_DIR = os.path.join(APP_DATA, "audio_tts")
+os.makedirs(TTS_DIR, exist_ok=True)
+
 
 class Api:
     def __init__(self):
         print("(API) Instancia creada.")
         pass
 
-    # --- ¡NUEVA FUNCIÓN! ---
     def get_all_auth_status(self):
         """
         Revisa el estado de TODAS las plataformas y devuelve los datos
@@ -48,8 +51,6 @@ class Api:
         
         print(f"(API) Estado de autenticación: {status}")
         return status
-
-    # --- Funciones de Estado y Autenticación (Sin cambios, pero con imports corregidos) ---
 
     def check_auth_status(self, platform):
         """
@@ -134,8 +135,6 @@ class Api:
         
         return {"success": success, "message": f"Desvinculación de {platform} {'exitosa' if success else 'fallida'}."}
     
-# --- ¡NUEVAS FUNCIONES CRUD! ---
-    
     def get_commands(self):
         """Obtiene todos los comandos de la BD."""
         print("(API) Solicitando 'get_commands'")
@@ -165,3 +164,45 @@ class Api:
         """Obtiene todos los registros de asistencia."""
         print("(API) Solicitando 'get_all_asistencias'")
         return db.get_all_asistencias()
+    
+    def generate_tts(self, text):
+        from gtts import gTTS
+        import base64
+        import tempfile
+        import os
+    
+        if not text or text.strip() == "":
+            return {"success": False, "error": "Texto vacío"}
+    
+        # 1. Crear archivo temporal
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        path = tmp.name
+        tmp.close()
+    
+        # 2. Generar TTS
+        try:
+            tts = gTTS(text=text, lang="es", slow=False)
+            tts.save(path)
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+        # 3. Convertir a base64
+        with open(path, "rb") as f:
+            b64_audio = base64.b64encode(f.read()).decode("utf-8")
+    
+        # 4. Eliminar archivo temporal
+        try:
+            os.remove(path)
+            print(f"[TTS] Archivo temporal eliminado: {path}")
+        except Exception as e:
+            print(f"[TTS] No se pudo eliminar archivo temporal: {e}")
+    
+        # 5. Retornar audio como base64
+        return {
+            "success": True,
+            "data": f"data:audio/mp3;base64,{b64_audio}"
+        }
+    
+    
+        
+        

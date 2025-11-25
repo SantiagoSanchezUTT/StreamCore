@@ -385,6 +385,28 @@ document.querySelectorAll('.nav-item').forEach(item => {
 // Initialize the TTS interface
 initializeTTS();
 
+async function testTTS() {
+    const text = document.getElementById("testMessage").value;
+
+        if (!text.trim()) {
+        alert("Escribe un texto primero.");
+        return;
+    }
+
+
+    const result = await window.pywebview.api.generate_tts(text);
+
+    if (result.success) {
+        const player = document.getElementById("ttsPlayer");
+        console.log(result);
+        player.src = result.data;
+        player.play();
+    }
+
+}
+
+
+
 // Start simulating new donations
 simulateNewDonations();
 

@@ -10,6 +10,8 @@ from processing import chat_processor, sender_processor
 from services import auth_service
 from connectors import twitch_connector
 from processing.tts_handler import tts_handler
+from server_static import start_static_server
+from api import TTS_DIR
 
 # --------------------------------
 
@@ -65,6 +67,9 @@ if __name__ == '__main__':
     _ = sender_processor
 
     api_instance = Api()
+    
+    start_static_server(TTS_DIR, port=8001)
+    print(f"   - Servidor estático iniciado en http://localhost:8001 para TTS.")
 
     # Crea la ventana
     window = webview.create_window(

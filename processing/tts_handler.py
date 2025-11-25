@@ -1,7 +1,7 @@
 from processing.tts_engine import OfflineTTS
 from processing.tts_processor import ChatProcessor
 from processing.tts_config import CONFIG
-from event_bus.bus import bus
+from event_bus import bus
 
 
 class TTSHandler:

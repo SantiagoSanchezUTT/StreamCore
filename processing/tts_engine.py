@@ -1,7 +1,7 @@
 import pyttsx3
 import random
 import time
-from tts_config import CONFIG
+from processing.tts_config import CONFIG
 
 class OfflineTTS:
     def __init__(self):
