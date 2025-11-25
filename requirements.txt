@@ -7,3 +7,4 @@ websockets
 curl_cffi
 event_bus
 dotenv
+pyttx3
