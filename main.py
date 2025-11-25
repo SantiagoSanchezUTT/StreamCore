@@ -9,6 +9,8 @@ from connectors import kick_connector
 from processing import chat_processor, sender_processor
 from services import auth_service
 from connectors import twitch_connector
+from processing.tts_handler import tts_handler
+
 # --------------------------------
 
 # --- Define rutas ---

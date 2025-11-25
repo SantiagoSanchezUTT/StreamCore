@@ -1,66 +1,56 @@
 import time
-from tts_config import CONFIG
+from processing.tts_config import CONFIG
 
 class ChatProcessor:
-    def __init__(self, tts_engine):
-        self.tts = tts_engine
-        self.last_global_tts = 0
-        self.user_last_tts = {}
+    def __init__(self, tts):
+        self.tts = tts
+        self.user_times = {}
 
-    # ==========================================
-    def is_tts_command(self, msg: str):
-        parts = msg.strip().split(" ", 1)
-        cmd = parts[0].lower()
-        return cmd in CONFIG["tts_commands"]
+    def process_message(self, username, message, is_sub=False):
+        if not CONFIG["enabled"]:
+            return
 
-    # ==========================================
-    def check_cooldowns(self, username):
+        # Solo subs
+        if CONFIG["only_subscribers"] and not is_sub:
+            return
+
+        # Modo comando
+        if CONFIG["command_mode"]:
+            if not message.lower().startswith("!tts"):
+                return
+            message = message[4:].strip()
+
+        # Palabras prohibidas
+        if CONFIG["filter_bad_words"]:
+            msg_l = message.lower()
+            for b in CONFIG["banned_words"]:
+                if b in msg_l:
+                    print(f"⛔ Bloqueado por palabra prohibida: {b}")
+                    return
+
+        # Longitud
+        if len(message) > CONFIG["max_length"]:
+            print("⛔ Mensaje demasiado largo")
+            return
+
+        # Anti-spam por usuario
         now = time.time()
+        user_list = self.user_times.get(username, [])
+        user_list = [t for t in user_list if now - t < 60]
+
+        if len(user_list) >= CONFIG["per_user_limit"]:
+            print("⛔ Usuario excedió mensajes por minuto")
+            return
+
+        user_list.append(now)
+        self.user_times[username] = user_list
 
         # Cooldown global
-        if now - self.last_global_tts < CONFIG["global_cooldown"]:
-            return False, f"⏳ Cooldown global: espera {CONFIG['global_cooldown']}s."
+        if hasattr(self, "_last_time") and now - self._last_time < CONFIG["cooldown_seconds"]:
+            print("⛔ Cooldown global activo")
+            return
 
-        # Cooldown por usuario
-        if username in self.user_last_tts:
-            if now - self.user_last_tts[username] < CONFIG["user_cooldown"]:
-                return False, f"⏳ {username}, espera {CONFIG['user_cooldown']}s"
+        self._last_time = now
 
-        return True, None
-
-    # ==========================================
-    def process_message(self, username, message):
-        msg = message.strip()
-
-        if not self.is_tts_command(msg):
-            return False
-
-        # Extraer texto
-        parts = msg.split(" ", 1)
-        if len(parts) == 1:
-            print("⚠️ Comando TTS sin mensaje.")
-            return False
-
-        text = parts[1].strip()
-
-        # Validar longitud
-        if len(text) > CONFIG["max_chars"]:
-            print("❌ Mensaje demasiado largo.")
-            return False
-
-        # Cooldowns
-        ok, reason = self.check_cooldowns(username)
-        if not ok:
-            print(reason)
-            return False
-
-        # Registrar cooldowns
-        now = time.time()
-        self.last_global_tts = now
-        self.user_last_tts[username] = now
-
-        # Ejecutar TTS
-        print(f"🔊 [TTS] {username}: {text}")
-        self.tts.speak(text)
-
-        return True
+        # Ejecutar
+        self.tts.speak(f"{username} dice: {message}")

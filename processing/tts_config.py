@@ -1,26 +1,23 @@
-# ==========================================
-# CONFIGURACIÓN GENERAL PARA EL TTS
-# ==========================================
-
 CONFIG = {
-    "voice_mode": "any",      # single / male / female / any
-    "voice_index": None,      # solo si voice_mode = "single"
-    "speed": 170,
-    "volume": 1.0,
-    "pitch": 80,
+    "enabled": True,
 
-    # Comandos TTS permitidos
-    "tts_commands": ["!tts", "!habla", "!voz"],
+    # Solo leer si escriben !tts
+    "command_mode": False,
 
-    # Máximo de caracteres permitidos por mensaje
-    "max_chars": 300,
+    # Reglas anti-spam
+    "cooldown_seconds": 4,
+    "max_length": 200,
+    "per_user_limit": 3,
+    "filter_bad_words": True,
 
-    # Cooldown global (segundos entre mensajes TTS)
-    "global_cooldown": 2,
+    "banned_words": [
+        "porno", "xxx", "nsfw", "racist", "nazi"
+    ],
 
-    # Cooldown por usuario
-    "user_cooldown": 10,
+    # Plataformas
+    "read_kick": True,
+    "read_twitch": True,
 
-    # Prefijo de comando
-    "command_prefix": "!"
+    # Solo subs
+    "only_subscribers": False,
 }
