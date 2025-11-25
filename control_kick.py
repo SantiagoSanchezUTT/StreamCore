@@ -4,6 +4,41 @@ import asyncio
 import os
 import sys
 import threading  # Necesario para correr Twitch auth bloqueante
+from event_bus import bus
+from processing.tts_config import CONFIG
+from processing.tts_engine import OfflineTTS
+from processing.tts_processor import ChatProcessor, sender_processor
+from event_bus import bus  # 👈 NO OLVIDES ESTO
+
+
+class TTSHandler:
+    def __init__(self):
+        print("🔊 Inicializando módulo TTS...")
+
+        self.tts = OfflineTTS()
+        self.chat_processor = ChatProcessor(self.tts)
+
+        # Subscribirse al bus
+        bus.subscribe("kick:message", self.on_message)
+
+        print("✅ TTS listo y escuchando mensajes del chat.\n")
+
+    # ==========================================================
+    # Cuando llega mensaje de Kick → lo pasamos al ChatProcessor
+    # ==========================================================
+    def on_message(self, data):
+        username = data.get("username")
+        message = data.get("message")
+
+        if not username or not message:
+            return
+
+        # Procesar TTS
+        self.chat_processor.process_message(username, message)
+
+
+# Instancia global automática
+tts_handler = TTSHandler()
 
 # --- Añade la carpeta raíz al PYTHONPATH ---
 project_root = os.path.dirname(os.path.abspath(__file__))
