@@ -74,6 +74,27 @@ def process_chat_message(data: dict):
 
     response = None
     target_platform = platform 
+    
+    if command_name == "!asistencia":
+        from api import Api
+        api_instance = Api()
+        result = api_instance.registrar_asistencia(sender, platform)
+
+        if result["success"]:
+            bus.publish("command:reply", {
+                "platform": platform,
+                "response": f"{sender}, tu asistencia ha sido registrada ✔️",
+                "original_message": data
+            })
+            bus.publish("asistencias:updated", {})
+        else:
+            bus.publish("command:reply", {
+                "platform": platform,
+                "response": f"{sender}, {result['error']}",
+                "original_message": data
+            })
+
+        return
 
     # --- LÓGICA DE COMANDOS DINÁMICOS ---
     if command_name.startswith("!"):
@@ -128,11 +149,8 @@ def process_chat_message(data: dict):
         if '{user}' in response:
             response = response.replace('{user}', sender)
         
-        # (Aquí pondremos la lógica para {count} en el futuro)
-            
-    # --- Lógica de Asistencia, TTS, etc. ---
-    # (Aquí va tu otra lógica, ej. log_user_assistance(...))
-    # ...
+        # --- LÓGICA DE ASISTENCIA (!asistencia) ---
+    
 
     # --- ENVIAR RESPUESTA ---
     # Si encontramos una respuesta, la publicamos en el bus

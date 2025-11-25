@@ -6,10 +6,24 @@ from data import tokens as token_manager
 from event_bus import bus
 import data.database as db
 from processing.tts_handler import tts_handler
+from data.database import (
+    log_user_assistance,
+    get_all_asistencias,
+    get_connection
+)
 
+
+# Directorio para almacenar audios TTS temporales
 APP_DATA = os.path.join(os.getenv("LOCALAPPDATA"), "StreamCoreData")
 TTS_DIR = os.path.join(APP_DATA, "audio_tts")
 os.makedirs(TTS_DIR, exist_ok=True)
+
+# ---------------------------
+# SISTEMA DE ASISTENCIAS
+# ---------------------------
+asistencias_registradas = set()   # una vez por sesión
+asistencias_lock = threading.Lock()
+
 
 
 class Api:
@@ -203,6 +217,91 @@ class Api:
             "data": f"data:audio/mp3;base64,{b64_audio}"
         }
     
+    def get_asistencias(self):
+        """ Devuelve todas las asistencias para la UI """
+        try:
+            asistencias = get_all_asistencias()
+            return {"success": True, "data": asistencias}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def registrar_asistencia(self, nickname, platform):
+        try:
+            nickname = nickname.lower()
+            platform = platform.lower()
     
-        
-        
+            # 🔥 1. Verificar si ya registró asistencia en esta sesión
+            global asistencias_registradas
+            with asistencias_lock:
+                if (nickname, platform) in asistencias_registradas:
+                    return {
+                        "success": False,
+                        "error": "Ya registraste tu asistencia en esta sesión 😊"
+                    }
+    
+                # Marcar como registrado
+                asistencias_registradas.add((nickname, platform))
+    
+            # 🔥 2. Registrar realmente en la BD
+            log_user_assistance(nickname, platform)
+    
+            return {
+                "success": True,
+                "message": "Asistencia registrada"
+            }
+    
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Error al registrar asistencia: {str(e)}"
+            }
+
+
+
+    # UI — eliminar asistencia
+    def delete_asistencia(self, asistencia_id):
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM asistencias WHERE id = ?", (asistencia_id,))
+                if cursor.rowcount == 0:
+                    return {"success": False, "error": "Registro no encontrado"}
+
+                conn.commit()
+
+            # Notificación real-time
+            bus.publish("asistencias:updated", {})
+
+            print(f"(API) delete_asistencia: id={asistencia_id} eliminado")
+            return {"success": True}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+
+    # UI — editar nickname
+    def editar_asistencia(self, asistencia_id, nuevo_total):
+        try:
+            nuevo_total = int(nuevo_total)
+
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE asistencias SET total_asistencias = ? WHERE id = ?",
+                    (nuevo_total, asistencia_id)
+                )
+                if cursor.rowcount == 0:
+                    return {"success": False, "error": "Registro no encontrado"}
+
+                conn.commit()
+
+            # Notificar actualización
+            bus.publish("asistencias:updated", {})
+
+            print(f"(API) editar_asistencia: id={asistencia_id} -> {nuevo_total}")
+            return {"success": True}
+
+        except ValueError:
+            return {"success": False, "error": "El total debe ser un número entero"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
