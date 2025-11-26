@@ -1,0 +1,13 @@
+[run]
+omit =
+    tests/*
+    test/*
+    .github/*
+    */__init__.py
+
+[report]
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+    if __name__ == .__main__.:
+    if typing.TYPE_CHECKING:

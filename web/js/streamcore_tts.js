@@ -1,19 +1,31 @@
-// streamcore_tts.js - TTS con WebAudio profesional (pitch real, speed real)
+// streamcore_tts.js - TTS Híbrido (WebAudio + Backend Control)
 
 // Cola de TTS
 let ttsQueue = []; // { id, user, message, audio, status: 'pending'|'playing' }
 let currentlyPlayingId = null;
 let ttsEnabled = true;
 
-// Audio / WebAudio
+// Audio / WebAudio (Solo para pruebas locales en navegador)
 let audioCtx = null;
 let gainNode = null;
 let currentSource = null;
 
 // Valores de control (por defecto)
-let controlVolume = 0.8; // 0..1
-let controlSpeed = 1.0;  // multiplicador (0.5 .. 2)
-let controlPitchSemitones = 0; // semitones (-12 .. +12)
+let controlVolume = 0.8; // 0.0 .. 1.0
+let controlSpeed = 1.0;  // 0.5 .. 2.0
+let controlPitchSemitones = 0; // -12 .. +12
+
+// ----------------- COMUNICACIÓN CON BACKEND (NUEVO) -----------------
+function sendConfigToBackend() {
+    // Esta función envía los valores de los sliders a Python
+    if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.update_tts_settings({
+            volume: controlVolume, 
+            speed: controlSpeed,
+            pitch: controlPitchSemitones
+        }).catch(err => console.log("Error enviando config al backend:", err));
+    }
+}
 
 // ----------------- UTILIDADES -----------------
 function escapeHtml(text){
@@ -85,7 +97,7 @@ function setupAudioSystemPro(){
     }
 }
 
-// ----------------- Reproducción profesional -----------------
+// ----------------- REPRODUCCIÓN (LÓGICA HÍBRIDA) -----------------
 async function playNextTTS(){
     if(!ttsEnabled) return;
     if(currentlyPlayingId) return;
@@ -102,37 +114,38 @@ async function playNextTTS(){
     try {
         let base64Audio = next.audio;
 
+        // [MODIFICACIÓN IMPORTANTE]
+        // Si NO hay audio Base64, asumimos que el Backend (Python) lo está reproduciendo.
+        // Aquí solo mostramos la animación visual para no duplicar el sonido.
         if(!base64Audio){
-            if(window.pywebview && window.pywebview.api && window.pywebview.api.generate_tts){
-                const res = await window.pywebview.api.generate_tts(next.message);
-                if(res && res.success && res.data){
-                    base64Audio = res.data;
-                } else {
-                    console.warn('generate_tts fallback falló', res);
-                    finishCurrentAndContinue(next.id);
-                    return;
-                }
-            } else {
-                console.warn('No hay audio ni API para generar TTS');
+            console.log("Audio gestionado por Backend (Segundo plano). Modo visual activo.");
+            
+            // Calculamos duración visual estimada (100ms por letra + 1s base)
+            const estimatedDuration = 1000 + (next.message.length * 100);
+
+            setTimeout(() => {
                 finishCurrentAndContinue(next.id);
-                return;
-            }
+            }, estimatedDuration);
+            
+            return; // SALIR AQUÍ: No reproducir nada en el navegador
         }
 
-        // Decodificar base64 a ArrayBuffer
+        // [SI HAY AUDIO] (Ej: Botón de prueba "Test TTS")
+        // Reproducimos usando el navegador
         const response = await fetch(base64Audio);
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-        // Detener cualquier audio actual
         if(currentSource){
             currentSource.stop();
         }
 
         const source = audioCtx.createBufferSource();
         source.buffer = audioBuffer;
+        
+        // Aplicamos efectos locales (Solo funcionan en pruebas web)
         source.playbackRate.value = controlSpeed;
-        source.detune.value = controlPitchSemitones * 100; // pitch en cents
+        source.detune.value = controlPitchSemitones * 100; 
         source.connect(gainNode);
 
         source.onended = () => {
@@ -158,22 +171,30 @@ function finishCurrentAndContinue(id){
 
 // ----------------- Saltar / Eliminar -----------------
 function skipTTS(id){
+    // Si estamos reproduciendo audio web (Test), lo detenemos
     if(currentlyPlayingId===id && currentSource){
         currentSource.stop();
         currentSource = null;
-        finishCurrentAndContinue(id);
-    } else {
-        ttsQueue = ttsQueue.filter(i=>i.id!==id);
-        updateQueueUI();
     }
+    // Si es backend, no podemos detener el audio de python desde aquí fácilmente,
+    // pero limpiamos la UI inmediatamente.
+    
+    finishCurrentAndContinue(id);
 }
 
 function removeTTS(id){
-    skipTTS(id);
+    // Si intentamos borrar algo que no se está reproduciendo
+    if (currentlyPlayingId !== id) {
+        ttsQueue = ttsQueue.filter(i=>i.id!==id);
+        updateQueueUI();
+    } else {
+        skipTTS(id);
+    }
 }
 
 // ----------------- Sliders / Controles -----------------
 function applyControlsPro(){
+    // Aplica cambios al audio web actual (si hay uno sonando)
     if(gainNode) gainNode.gain.value = controlVolume;
     if(currentSource){
         currentSource.playbackRate.value = controlSpeed;
@@ -194,8 +215,10 @@ function initControlsBindings(){
         speedSlider.addEventListener('input', function(){
             controlSpeed = parseFloat(this.value) || 1.0;
             if(speedValue) speedValue.textContent = controlSpeed.toFixed(1)+'x';
-            applyControlsPro();
+            applyControlsPro();     // Visual/Web
+            sendConfigToBackend();  // Enviar a Python
         });
+        // Cargar valor inicial
         controlSpeed = parseFloat(speedSlider.value) || controlSpeed;
         if(speedValue) speedValue.textContent = controlSpeed.toFixed(1)+'x';
     }
@@ -205,6 +228,7 @@ function initControlsBindings(){
             controlPitchSemitones = parseInt(this.value,10)||0;
             if(pitchValue) pitchValue.textContent = `${controlPitchSemitones} st`;
             applyControlsPro();
+            sendConfigToBackend();
         });
         controlPitchSemitones = parseInt(pitchSlider.value,10)||controlPitchSemitones;
         if(pitchValue) pitchValue.textContent = `${controlPitchSemitones} st`;
@@ -212,13 +236,18 @@ function initControlsBindings(){
 
     if(volumeSlider){
         volumeSlider.addEventListener('input', function(){
+            // Convertir 0-100 a 0.0-1.0
             controlVolume = Math.max(0, Math.min(1, parseFloat(this.value)/100));
             if(volumeValue) volumeValue.textContent = Math.round(controlVolume*100)+'%';
-            applyControlsPro();
+            applyControlsPro();     // Visual/Web
+            sendConfigToBackend();  // Enviar a Python (¡Importante!)
         });
         controlVolume = volumeSlider.value ? Math.max(0, Math.min(1, parseFloat(volumeSlider.value)/100)) : controlVolume;
         if(volumeValue) volumeValue.textContent = Math.round(controlVolume*100)+'%';
     }
+
+    // Enviar configuración inicial al arrancar
+    setTimeout(sendConfigToBackend, 1000);
 }
 
 // ----------------- Eventos pywebview -----------------
@@ -227,8 +256,8 @@ window.addEventListener("tts:new", async (ev) => {
         const data = ev.detail || {};
         const user = data.user || 'Anon';
         const message = data.message || '';
-        const audio = data.audio || null;
-        enqueueTTS(user,message,audio);
+        const audio = data.audio || null; // Si es null, es modo Backend
+        enqueueTTS(user, message, audio);
     } catch(e){ console.error('Error manejando tts:new', e); }
 });
 
@@ -261,7 +290,10 @@ async function testTTS(){
         return alert("API de TTS no disponible.");
     }
 
+    // Solicitamos a la API que genere el audio y nos lo devuelva (Base64)
+    // para probarlo aquí mismo en el navegador.
     const res = await window.pywebview.api.generate_tts(text);
+    
     if(!res || !res.success || !res.data) return alert("No se pudo generar el TTS.");
 
     enqueueTTS('Prueba', text, res.data);

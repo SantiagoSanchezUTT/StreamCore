@@ -97,23 +97,22 @@ def process_chat_message(data: dict):
         return
 
     if command_name == "!s":
-        texto = content[len("!s"):].strip()
-    
-        if not texto:
+            texto = content[len("!s"):].strip()
+        
+            if not texto:
+                return
+        
+            # Crear texto con "usuario dice"
+            tts_text = f"{sender} dice: {texto}"
+        
+            # Instanciar API y mandar a la cola directa
+            from api import Api
+            api_instance = Api() # Es mejor usar un nombre claro como api_instance
+            
+            # Esto disparará el evento para que tts_service lo hable en segundo plano
+            api_instance.tts_enqueue(sender, tts_text)
+        
             return
-    
-        # Crear texto con "usuario dice"
-        tts_text = f"{sender} dice: {texto}"
-    
-        # Generar TTS usando el texto modificado
-        from api import Api
-        api = Api()
-        audio = api.generate_tts(tts_text)
-    
-        # Enviar a UI para cola
-        api.tts_enqueue(sender, tts_text)
-    
-        return
 
 
     # --- LÓGICA DE COMANDOS DINÁMICOS ---

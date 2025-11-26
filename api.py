@@ -5,7 +5,7 @@ from services import auth_service
 from data import tokens as token_manager
 from event_bus import bus
 import data.database as db
-from processing.tts_handler import tts_handler
+#from processing.tts_handler import tts_handler
 from data.database import (
     log_user_assistance,
     get_all_asistencias,
@@ -218,29 +218,37 @@ class Api:
         }
     
     def tts_enqueue(self, user, message):
-        """
-        Encola un mensaje TTS: genera el audio (base64) y publica
-        el evento 'tts:new' con user, message y audio (o audio = None si falla).
-        """
-        # Intentar generar el audio (reutiliza generate_tts)
-        try:
-            tts_result = self.generate_tts(message)
-            audio_b64 = tts_result.get("data") if tts_result.get("success") else None
-        except Exception as e:
-            print(f"[API] Error generando TTS en tts_enqueue: {e}")
-            audio_b64 = None
+            """
+            Envia el mensaje al bus de eventos.
+            1. 'tts:speak' -> Lo escucha el servicio de fondo (tts_service) y lo reproduce en el PC.
+            2. 'tts:new'   -> Lo escucha el Javascript para mostrarlo en la lista visual (sin audio).
+            """
+            if not message:
+                return {"success": False}
     
-        payload = {
-            "user": user,
-            "message": message,
-            "audio": audio_b64
-        }
+            print(f"(API) Encolando TTS Backend para {user}: {message}")
     
-        print("Publicando evento 'tts:new'...")
-        bus.publish("tts:new", payload)
+            # 1. DISPARAR AUDIO EN SEGUNDO PLANO (BACKEND)
+            # Esto lo captura tu nuevo tts_service.py y usa pygame/gTTS
+            bus.publish("tts:speak", message)
     
-        return {"success": True}
+            # 2. ACTUALIZAR INTERFAZ WEB (FRONTEND)
+            # Enviamos 'audio': None porque el navegador NO debe reproducirlo, solo mostrar el texto.
+            payload = {
+                "user": user,
+                "message": message,
+                "audio": None 
+            }
+            bus.publish("tts:new", payload)
+    
+            return {"success": True}
 
+    def update_tts_settings(self, settings):
+            """Recibe configuración desde el JS (volumen, etc)"""
+            print(f"(API) Actualizando configuración TTS: {settings}")
+            # Publicamos el evento para que el servicio lo escuche
+            bus.publish("tts:config", settings)
+            return {"success": True}
     
     def get_asistencias(self):
         """ Devuelve todas las asistencias para la UI """

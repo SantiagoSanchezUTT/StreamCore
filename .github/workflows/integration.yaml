@@ -1,0 +1,38 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
+          pip install pytest pytest-cov
+
+      - name: Run only integration-marked tests
+        run: |
+          mkdir -p tests/integration_results
+          pytest -m integration \
+                 --junitxml=tests/integration_results/junit-integration.xml \
+                 --cov=. --cov-report=xml:tests/integration_results/coverage-integration.xml \
+                 --cov-report=html:tests/integration_results/htmlcov \
+                 -q
+
+      - name: Upload integration artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-results
+          path: tests/integration_results/**

@@ -1,6 +1,7 @@
 import webview
 import os
 import pathlib
+from services.tts_service import TTSService # Importar el nuevo servicio
 import threading
 import json
 import asyncio
@@ -10,7 +11,7 @@ from connectors import kick_connector
 from processing import chat_processor, sender_processor
 from services import auth_service
 from connectors import twitch_connector
-from processing.tts_handler import tts_handler
+#from processing.tts_handler import tts_handler
 from server_static import start_static_server
 from api import TTS_DIR
 
@@ -18,7 +19,7 @@ from api import TTS_DIR
 
 # --- Define rutas ---
 script_dir = pathlib.Path(__file__).parent.resolve()
-html_path = script_dir / 'web' / 'streamcore_config.html'
+html_path = script_dir / 'web' / 'boceto_interfaz.html'
 html_file_abs_path = str(html_path)
 # --------------------
 
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     print("   - Inicializando procesadores (suscribiéndose)...")
     _ = chat_processor
     _ = sender_processor
-
+    tts_service = TTSService(bus)
     api_instance = Api()
     
     start_static_server(TTS_DIR, port=8001)
