@@ -8,3 +8,4 @@ curl_cffi
 event_bus
 dotenv
 gTTS
+pygame
